@@ -1,5 +1,7 @@
 PARA PORDER USAR EL PROGRAMA CREEN ESTA BASE DE DATOS 
+
 LINK PARA DESCARGAR LOS COMANDOS SQL
+
 https://ensenadatecnm-my.sharepoint.com/:u:/g/personal/l23760349_ensenada_tecnm_mx/ETONcaWUU95Klbhk_dFhiQUBDe3MJX0MYEyYEKPa5_qCbw?e=b8oeLX
 
 
