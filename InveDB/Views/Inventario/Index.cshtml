@@ -1,0 +1,191 @@
+﻿@model IEnumerable<InveDB.Modelos.InventarioViewModel>
+
+@{
+    ViewData["Title"] = "Inventario";
+    Layout = "_Layout";
+}
+
+<h3 class="mb-4">InveDB - Inventario</h3>
+
+<!-- FILTROS -->
+<div class="filter-section mb-4 row g-3 align-items-end">
+
+    <!-- Producto -->
+    <div class="col-md-3">
+        <label class="form-label fw-semibold">Producto</label>
+        <input type="text" class="form-control mb-2" placeholder="Buscar producto..." id="filtroProducto" onkeyup="filtrarInventario()" />
+        <select class="form-select" id="dropdownProducto" onchange="filtrarPorDropdown('producto')">
+            <option value="">-- Seleccionar producto --</option>
+            @if (ViewBag.Productos != null)
+            {
+                foreach (var p in ViewBag.Productos)
+                {
+                    <option value="@p">@p</option>
+                }
+            }
+        </select>
+    </div>
+
+    <!-- Categoría -->
+    <div class="col-md-3">
+        <label class="form-label fw-semibold">Categoría</label>
+        <input type="text" class="form-control mb-2" placeholder="Buscar categoría..." id="filtroCategoria" onkeyup="filtrarInventario()" />
+        <select class="form-select" id="dropdownCategoria" onchange="filtrarPorDropdown('categoria')">
+            <option value="">-- Seleccionar categoría --</option>
+            @if (ViewBag.Categorias != null)
+            {
+                foreach (var c in ViewBag.Categorias)
+                {
+                    <option value="@c">@c</option>
+                }
+            }
+        </select>
+    </div>
+
+    <!-- Proveedor -->
+    <div class="col-md-3">
+        <label class="form-label fw-semibold">Proveedor</label>
+        <input type="text" class="form-control mb-2" placeholder="Buscar proveedor..." id="filtroProveedor" onkeyup="filtrarInventario()" />
+        <select class="form-select" id="dropdownProveedor" onchange="filtrarPorDropdown('proveedor')">
+            <option value="">-- Seleccionar proveedor --</option>
+            @if (ViewBag.Proveedores != null)
+            {
+                foreach (var pr in ViewBag.Proveedores)
+                {
+                    <option value="@pr">@pr</option>
+                }
+            }
+        </select>
+    </div>
+
+    <!-- Fecha -->
+    <div class="col-md-2">
+        <label class="form-label fw-semibold">Fecha</label>
+        <input type="date" class="form-control mb-2" id="filtroFecha" onchange="filtrarInventario()" />
+        <select class="form-select" id="dropdownFecha" onchange="filtrarPorDropdown('fecha')">
+            <option value="">-- Seleccionar fecha --</option>
+            @if (ViewBag.Fechas != null)
+            {
+                foreach (var f in ViewBag.Fechas)
+                {
+                    <option value="@Convert.ToDateTime(f).ToString("yyyy-MM-dd")">@Convert.ToDateTime(f).ToString("yyyy-MM-dd")</option>
+                }
+            }
+        </select>
+    </div>
+
+    <!-- Botón Limpiar -->
+    <div class="col-md-1 d-flex justify-content-center">
+        <button class="btn btn-outline-danger mt-2" onclick="limpiarFiltros()">
+            🧹 Limpiar
+        </button>
+    </div>
+</div>
+
+<!-- TABLA -->
+<div class="table-responsive">
+    <table class="table table-bordered table-striped" id="tablaInventario">
+        <thead class="table-dark">
+            <tr>
+                <th>Producto</th>
+                <th>Categoría</th>
+                <th>Cantidad</th>
+                <th>Unidad</th>
+                <th>Precio unitario</th>
+                <th>Proveedor</th>
+                <th>Última fecha</th>
+                <th>Descripción</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Model != null && Model.Any())
+            {
+                foreach (var item in Model)
+                {
+                    <tr>
+                        <td>@item.Producto</td>
+                        <td>@item.Categoria</td>
+                        <td>@item.Cantidad</td>
+                        <td>@item.UnidadMedida</td>
+                        <td>$@item.PrecioUnitario</td>
+                        <td>@item.Proveedor</td>
+                        <td>@item.UltimaFecha?.ToString("yyyy-MM-dd")</td>
+                        <td>@item.Descripcion</td>
+                    </tr>
+                }
+            }
+            else
+            {
+                <tr>
+                    <td colspan="8" class="text-center text-muted">No hay productos en inventario</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@section Scripts {
+    <script>
+        // Filtra la tabla
+        function filtrarInventario() {
+            let prod = document.getElementById("filtroProducto").value.toLowerCase();
+            let cat = document.getElementById("filtroCategoria").value.toLowerCase();
+            let prov = document.getElementById("filtroProveedor").value.toLowerCase();
+            let fecha = document.getElementById("filtroFecha").value;
+
+            let filas = document.querySelectorAll("#tablaInventario tbody tr");
+
+            filas.forEach(fila => {
+                let p = fila.cells[0].textContent.toLowerCase();
+                let c = fila.cells[1].textContent.toLowerCase();
+                let pr = fila.cells[5].textContent.toLowerCase();
+                let f = fila.cells[6].textContent.trim();
+
+                if (p.includes(prod) && c.includes(cat) && pr.includes(prov) && (fecha === "" || f === fecha)) {
+                    fila.style.display = "";
+                } else {
+                    fila.style.display = "none";
+                }
+            });
+        }
+
+        // Filtro desde dropdown
+        function filtrarPorDropdown(tipo) {
+            let valor = "";
+            switch (tipo) {
+                case "producto":
+                    valor = document.getElementById("dropdownProducto").value;
+                    document.getElementById("filtroProducto").value = valor;
+                    break;
+                case "categoria":
+                    valor = document.getElementById("dropdownCategoria").value;
+                    document.getElementById("filtroCategoria").value = valor;
+                    break;
+                case "proveedor":
+                    valor = document.getElementById("dropdownProveedor").value;
+                    document.getElementById("filtroProveedor").value = valor;
+                    break;
+                case "fecha":
+                    valor = document.getElementById("dropdownFecha").value;
+                    document.getElementById("filtroFecha").value = valor;
+                    break;
+            }
+            filtrarInventario();
+        }
+
+        // Limpia todos los filtros y muestra todo
+        function limpiarFiltros() {
+            document.getElementById("filtroProducto").value = "";
+            document.getElementById("filtroCategoria").value = "";
+            document.getElementById("filtroProveedor").value = "";
+            document.getElementById("filtroFecha").value = "";
+
+            document.getElementById("dropdownProducto").value = "";
+            document.getElementById("dropdownCategoria").value = "";
+            document.getElementById("dropdownProveedor").value = "";
+            document.getElementById("dropdownFecha").value = "";
+
+            filtrarInventario();
+        }
+    </script>
+}

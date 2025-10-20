@@ -1,0 +1,166 @@
+﻿
+
+/*ESTOY BASTANTE SEGURO DE QUE NO ESTOY USANDO ESTE ARCHIVO PERO LO DEJO POR SI ACASO U.U */
+
+
+/* ====== GENERAL ====== */
+body {
+    background: #f4f6f9;
+    font-family: 'Segoe UI', sans-serif;
+}
+
+/* ====== SIDEBAR (usa el del _Layout, solo complementa) ====== */
+.sidebar {
+    width: 240px;
+    background-color: #2c3e50;
+    color: white;
+    min-height: 100vh;
+    padding-top: 20px;
+    flex-shrink: 0;
+}
+
+    .sidebar h3 {
+        font-size: 1.5rem;
+        text-align: center;
+        margin-bottom: 20px;
+    }
+
+    .sidebar a {
+        color: white;
+        text-decoration: none;
+        display: block;
+        padding: 10px 20px;
+    }
+
+        .sidebar a:hover,
+        .sidebar a.active {
+            background-color: #1abc9c;
+        }
+
+/* ====== CONTENIDO PRINCIPAL ====== */
+.content {
+    background: #f4f6f9;
+    min-height: 100vh;
+    padding: 30px;
+    flex-grow: 1;
+    overflow-x: auto;
+}
+
+/* ====== TABLAS ====== */
+.table-container {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    margin-top: 20px;
+    overflow-x: auto;
+}
+
+.table-productos {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+}
+
+    .table-productos th,
+    .table-productos td {
+        border: 1px solid #ddd;
+        padding: 10px;
+        text-align: left;
+    }
+
+    .table-productos th {
+        background: #2c3e50;
+        color: white;
+        text-transform: uppercase;
+    }
+
+    .table-productos tr:nth-child(even) {
+        background: #f4f6f9;
+    }
+
+    .table-productos tr:hover {
+        background: #e0f7fa;
+        cursor: pointer;
+    }
+
+/* ====== BOTONES DE ACCIÓN ====== */
+.action-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.btn-sim {
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.btn-add {
+    background-color: #28a745;
+}
+
+.btn-edit {
+    background-color: #ffc107;
+    color: black;
+}
+
+.btn-delete {
+    background-color: #dc3545;
+}
+
+/* ====== PANEL INFERIOR ====== */
+#formPanel {
+    display: none;
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    margin-top: 20px;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* ====== PESTAÑAS ====== */
+.nav-tabs {
+    border-bottom: 2px solid #1abc9c;
+    margin-bottom: 20px;
+}
+
+    .nav-tabs .nav-link {
+        color: #2c3e50;
+        font-weight: 500;
+    }
+
+        .nav-tabs .nav-link.active {
+            background-color: #1abc9c !important;
+            color: white !important;
+        }
+
+/* ====== RESPONSIVO ====== */
+@media (max-width: 768px) {
+    .d-flex {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: 100%;
+        min-height: auto;
+        text-align: center;
+    }
+
+    .content {
+        padding: 15px;
+    }
+
+    .action-buttons {
+        flex-direction: column;
+    }
+
+    .btn-sim {
+        width: 100%;
+    }
+}

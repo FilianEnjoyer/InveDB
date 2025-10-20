@@ -1,0 +1,4132 @@
+﻿Saltar al contenido
+Historial del chat
+
+Dijiste:
+Quiero crear una aplicacion web, en ASP.NET, ya tengo mi base de datos en un sevidor SQLServer a continuacion te doy la consulta que use para la base de datos, quiero que me guies paso a paso sobre como trabajar con ASP hacer mi acplicacion.
+CREATE DATABASE AlmacenPTest;
+GO
+USE AlmacenPTest;
+GO
+
+CREATE TABLE Categoria (
+    id_categoria INT PRIMARY KEY IDENTITY,
+    nombre VARCHAR(100) NOT NULL,
+    descripcion VARCHAR(255)
+);
+GO
+
+CREATE TABLE Producto (
+    id_producto INT PRIMARY KEY IDENTITY,
+    nombre VARCHAR(100) NOT NULL,
+    descripcion VARCHAR(255),
+    unidad_medida VARCHAR(20) NOT NULL,
+    id_categoria INT NOT NULL,
+    precio_unitario DECIMAL(10,2) NOT NULL DEFAULT 0,
+    FOREIGN KEY (id_categoria) REFERENCES Categoria(id_categoria)
+);
+GO
+
+CREATE TABLE Proveedor (
+    id_proveedor INT PRIMARY KEY IDENTITY,
+    nombre VARCHAR(100) NOT NULL,
+    telefono VARCHAR(20),
+    direccion VARCHAR(255)
+);
+GO
+
+
+CREATE TABLE Sucursal (
+    id_sucursal INT PRIMARY KEY IDENTITY,
+    nombre VARCHAR(100) NOT NULL,
+    direccion VARCHAR(255),
+    telefono VARCHAR(20)
+);
+GO
+
+CREATE TABLE Inventario (
+    id_producto INT PRIMARY KEY,
+    cantidad DECIMAL(10,2) NOT NULL DEFAULT 0,
+    FOREIGN KEY (id_producto) REFERENCES Producto(id_producto)
+);
+GO
+
+CREATE TABLE Movimiento (
+    id_movimiento INT PRIMARY KEY IDENTITY,
+    id_producto INT NOT NULL,
+    tipo CHAR(1) NOT NULL CHECK (tipo IN ('E','S')), -- E=Entrada, S=Salida
+    cantidad DECIMAL(10,2) NOT NULL,
+    fecha DATETIME NOT NULL DEFAULT GETDATE(),
+    id_proveedor INT NULL,
+    id_sucursal INT NULL,
+    FOREIGN KEY (id_producto) REFERENCES Producto(id_producto),
+    FOREIGN KEY (id_proveedor) REFERENCES Proveedor(id_proveedor),
+    FOREIGN KEY (id_sucursal) REFERENCES Sucursal(id_sucursal)
+);
+GO
+
+
+CREATE TRIGGER trg_Movimiento_Entrada
+ON Movimiento
+AFTER INSERT
+AS
+BEGIN
+-- Sumar cantidad si es entrada
+UPDATE Inventario
+SET cantidad = cantidad + i.cantidad
+FROM Inventario inv
+INNER JOIN inserted i ON inv.id_producto = i.id_producto
+WHERE i.tipo = 'E';
+
+-- Insertar producto si no existe en inventario
+INSERT INTO Inventario (id_producto, cantidad)
+SELECT i.id_producto, i.cantidad
+FROM inserted i
+WHERE i.tipo = 'E'
+AND NOT EXISTS (SELECT 1 FROM Inventario inv WHERE inv.id_producto = i.id_producto);
+END;
+GO
+
+
+CREATE TRIGGER trg_Movimiento_Salida
+ON Movimiento
+AFTER INSERT
+AS
+BEGIN
+-- Restar cantidad si es salida
+UPDATE Inventario
+SET cantidad = cantidad - i.cantidad
+FROM Inventario inv
+INNER JOIN inserted i ON inv.id_producto = i.id_producto
+WHERE i.tipo = 'S';
+END;
+GO
+ChatGPT dijo:
+Perfecto 👌, tienes una base de datos muy bien estructurada para un sistema de almacén.
+Vamos a crear paso a paso tu aplicación web ASP.NET con SQL Server usando esa base de datos.
+Te guiaré desde cero hasta que tengas el backend conectado, los modelos, controladores, vistas y CRUD funcionando.
+
+🧭 PASO 1: Crear el proyecto en Visual Studio
+Abre Visual Studio 2022 (o 2019 si lo prefieres).
+
+Selecciona Crear un nuevo proyecto.
+
+Busca ASP.NET Core Web App (Model-View-Controller).
+
+Asigna el nombre del proyecto → por ejemplo:
+AlmacenPWeb
+
+Elige una ubicación (carpeta donde lo guardarás).
+
+En Framework, selecciona .NET 8.0 (Long-term support).
+
+Da clic en Crear.
+
+Espera a que el proyecto se genere.
+
+⚙️ PASO 2: Conectarte a SQL Server
+Tienes tu base de datos AlmacenPTest en un servidor SQL Server, así que ahora:
+
+En el Explorador de soluciones, abre el archivo:
+
+appsettings.json
+Dentro del bloque "ConnectionStrings", agrega tu cadena de conexión:
+
+"ConnectionStrings": {
+    "DefaultConnection": "Server=TU_SERVIDOR;Database=AlmacenPTest;User Id=TU_USUARIO;Password=TU_CONTRASEÑA;Trusted_Connection=False;MultipleActiveResultSets=true;TrustServerCertificate=True;"
+}
+
+⚠️ Si usas autenticación de Windows:
+
+"ConnectionStrings": {
+    "DefaultConnection": "Server=TU_SERVIDOR;Database=AlmacenPTest;Trusted_Connection=True;TrustServerCertificate=True;"
+}
+
+🧩 PASO 3: Crear la carpeta Models con tus clases
+En la raíz del proyecto:
+
+Clic derecho → Agregar → Carpeta → nómbrala Models.
+
+Dentro de ella crea los archivos .cs con las clases que representan tus tablas.
+
+Por ejemplo:
+
+🔹 Models/Categoria.cs
+using System.ComponentModel.DataAnnotations;
+
+namespace AlmacenPWeb.Models {
+    public class Categoria
+
+{
+    [Key] public int Id_Categoria
+
+{
+    get;
+    set;
+}
+
+[Required]
+[StringLength(100)]
+public string Nombre {
+    get;
+    set;
+}
+
+[StringLength(255)]
+public string Descripcion {
+    get;
+    set;
+}
+
+// Relación
+public ICollection<Producto > Productos {
+    get;
+    set;
+}
+
+}
+}
+
+🔹 Models/Producto.cs
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace AlmacenPWeb.Models {
+    public class Producto
+
+{
+    [Key] public int Id_Producto
+
+{
+    get;
+    set;
+}
+
+[Required]
+[StringLength(100)]
+public string Nombre {
+    get;
+    set;
+}
+
+[StringLength(255)]
+public string Descripcion {
+    get;
+    set;
+}
+
+[Required]
+[StringLength(20)]
+public string Unidad_Medida {
+    get;
+    set;
+}
+
+[Required]
+[ForeignKey("Categoria")]
+public int Id_Categoria {
+    get;
+    set;
+}
+
+[Column(TypeName = "decimal(10,2)")]
+public decimal Precio_Unitario {
+    get;
+    set;
+}
+
+public Categoria Categoria {
+    get;
+    set;
+}
+
+}
+}
+
+Y así sucesivamente crearemos las demás (Proveedor, Sucursal, Inventario, Movimiento).
+
+🧠 PASO 4: Crear el DbContext
+Crea una clase que representará la conexión con la base de datos:
+
+🔹 Data/AlmacenContext.cs
+using Microsoft.EntityFrameworkCore;
+using AlmacenPWeb.Models;
+
+namespace AlmacenPWeb.Data {
+    public class AlmacenContext : DbContext
+
+{
+    public AlmacenContext(DbContextOptions<AlmacenContext> options) : base(options)
+
+{
+}
+
+public DbSet<Categoria > Categorias {
+    get;
+    set;
+}
+
+public DbSet<Producto > Productos {
+    get;
+    set;
+}
+
+public DbSet<Proveedor > Proveedores {
+    get;
+    set;
+}
+
+public DbSet<Sucursal > Sucursales {
+    get;
+    set;
+}
+
+public DbSet<Inventario > Inventarios {
+    get;
+    set;
+}
+
+public DbSet<Movimiento > Movimientos {
+    get;
+    set;
+}
+
+}
+}
+
+⚙️ PASO 5: Registrar el contexto en el programa
+Abre el archivo Program.cs y agrega:
+
+using AlmacenPWeb.Data;
+using Microsoft.EntityFrameworkCore;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Agregar contexto
+builder.Services.AddDbContext<AlmacenContext > (options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddControllersWithViews();
+
+var app = builder.Build();
+🧱 PASO 6: Crear controladores y vistas con scaffolding
+Visual Studio puede generar automáticamente el CRUD.
+
+Clic derecho en la carpeta Controllers → Agregar → Nuevo elemento con scaffolding...
+
+Selecciona:
+MVC Controller with views, using Entity Framework
+
+Escoge la clase modelo (Categoria) y el contexto (AlmacenContext)
+
+Clic en Agregar
+
+Esto generará:
+
+Controlador CategoriasController.cs
+
+Vistas en Views/Categorias/ con las operaciones Crear, Editar, Detalles, Eliminar y Lista
+
+Repite el proceso para:
+
+Producto
+
+Proveedor
+
+Sucursal
+
+Movimiento
+
+Inventario (solo lectura, ya que se actualiza con triggers)
+
+🧭 PASO 7: Probar la app
+Ejecuta con Ctrl + F5
+
+Deberías ver la página principal
+
+En la URL, agrega /Categorias → te mostrará la lista (vacía)
+
+Crea registros y prueba que se guarden correctamente en SQL Server
+
+🪄 PASO 8 (Opcional): Mejorar la interfaz
+Después de tener el CRUD funcionando, podemos agregar:
+
+Bootstrap o Tailwind para diseño.
+
+Validaciones con DataAnnotations.
+
+Menús de navegación entre entidades.
+
+🔜 Próximo paso
+Si quieres, en el siguiente paso puedo ayudarte a:
+
+Crear todas las clases Model completas
+
+O generar la estructura inicial del proyecto con todas las relaciones listas.
+
+¿Quieres que te genere todas las clases C# de tu base de datos (Modelos completos) para que las copies directamente al proyecto?
+
+Dijiste:
+este es el contenido de appsettings {
+    "Logging":
+
+{
+    "LogLevel":
+
+{
+    "Default": "Information", "Microsoft.AspNetCore": "Warning"
+}
+
+}
+,
+"AllowedHosts": "*"
+}
+
+ChatGPT dijo:
+Perfecto 👍, ese es el contenido por defecto de appsettings.json cuando se crea un proyecto nuevo de ASP.NET Core.
+Ahora vamos a agregar tu cadena de conexión para que el proyecto pueda comunicarse con tu base de datos SQL Server.
+
+🧩 PASO 1: Editar appsettings.json
+Abre el archivo completo y reemplázalo por este contenido (ajustando el nombre de tu servidor y credenciales): {
+    "ConnectionStrings":
+
+{
+    "DefaultConnection": "Server=TU_SERVIDOR_SQL;Database=AlmacenPTest;Trusted_Connection=True;TrustServerCertificate=True;"
+}
+
+,
+"Logging": {
+    "LogLevel":
+
+{
+    "Default": "Information", "Microsoft.AspNetCore": "Warning"
+}
+
+}
+,
+"AllowedHosts": "*"
+}
+
+🔧 Si usas autenticación de SQL Server (usuario y contraseña)
+Cambia la cadena por esta: {
+    "ConnectionStrings":
+
+{
+    "DefaultConnection": "Server=TU_SERVIDOR_SQL;Database=AlmacenPTest;User Id=TU_USUARIO;Password=TU_CONTRASEÑA;Trusted_Connection=False;MultipleActiveResultSets=true;TrustServerCertificate=True;"
+}
+
+,
+"Logging": {
+    "LogLevel":
+
+{
+    "Default": "Information", "Microsoft.AspNetCore": "Warning"
+}
+
+}
+,
+"AllowedHosts": "*"
+}
+
+🔹 Ejemplo:
+
+"Server=localhost\\SQLEXPRESS;Database=AlmacenPTest;Trusted_Connection=True;TrustServerCertificate=True;"
+🧠 PASO 2: Registrar la conexión en Program.cs
+Abre el archivo Program.cs y asegúrate de que tenga lo siguiente:
+
+using AlmacenPWeb.Data;
+using Microsoft.EntityFrameworkCore;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Registrar el contexto de base de datos
+builder.Services.AddDbContext<AlmacenContext > (options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddControllersWithViews();
+
+var app = builder.Build();
+
+// Configuración del pipeline
+if (!app.Environment.IsDevelopment()) {
+    app .UseExceptionHandler("/Home/Error");
+}
+
+app.UseStaticFiles();
+app.UseRouting();
+app.UseAuthorization();
+
+app.MapControllerRoute( name: "default", pattern: "{controller=Home}/{action=Index}/{id?}");
+
+app.Run();
+✅ Verificación
+Para confirmar que la conexión funciona:
+
+Presiona Ctrl + F5 para ejecutar el proyecto.
+
+Si no aparece ningún error de conexión, todo está bien.
+
+Más adelante, cuando generemos el primer controlador con Entity Framework, Visual Studio usará esa conexión automáticamente para leer y guardar datos en AlmacenPTest.
+
+¿Quieres que te muestre ahora todas las clases Model (C#) que corresponden a tus tablas (Categoria, Producto, Proveedor, etc.) con las relaciones listas para copiar a tu proyecto?
+
+Dijiste:
+El nombre del tipo o del espacio de nombres 'AlmacenPWeb' no se encontró (¿falta una directiva using o una referencia de ensamblado?)
+ChatGPT dijo:
+Excelente que me lo digas 👍
+Ese error es muy común cuando estás siguiendo los pasos de configuración por primera vez en un proyecto ASP.NET Core MVC.
+Vamos a solucionarlo paso a paso.
+
+🧠 Causa del error
+El error:
+
+El nombre del tipo o del espacio de nombres 'AlmacenPWeb' no se encontró (¿falta una directiva using o una referencia de ensamblado?)
+
+significa que Visual Studio no reconoce el nombre del namespace que estás usando (en este caso AlmacenPWeb).
+
+Esto ocurre porque:
+
+El nombre del proyecto no es exactamente AlmacenPWeb.
+
+O estás usando un namespace que no coincide con el nombre real del proyecto que aparece en el .csproj.
+
+🔍 PASO 1: Verifica el nombre real del proyecto
+En el Explorador de soluciones, busca tu proyecto principal (la carpeta con el ícono del globo 🌐 o C#).
+
+Haz clic derecho → Editar archivo del proyecto (.csproj).
+
+Revisa la línea:
+
+<RootNamespace > TuProyecto</RootNamespace >
+o bien el nombre del archivo .csproj, por ejemplo:
+
+AlmacenWebApp.csproj
+Ese nombre (sin la extensión .csproj) es el namespace base que debes usar.
+
+🧩 PASO 2: Corrige el namespace en tus archivos
+Por ejemplo, si tu proyecto se llama AlmacenApp, entonces:
+
+En Program.cs
+No cambias nada aquí, solo asegúrate de tener:
+
+using AlmacenApp.Data;
+En la carpeta Data
+En tu archivo AlmacenContext.cs, el namespace debe coincidir:
+
+using Microsoft.EntityFrameworkCore;
+using AlmacenApp.Models; // 👈 cambia esto si tu proyecto no se llama AlmacenPWeb
+
+namespace AlmacenApp.Data // 👈 debe coincidir con el nombre real del proyecto {
+    public class AlmacenContext : DbContext
+
+{
+    public AlmacenContext(DbContextOptions<AlmacenContext> options) : base(options)
+
+{
+}
+
+public DbSet<Categoria > Categorias {
+    get;
+    set;
+}
+
+public DbSet<Producto > Productos {
+    get;
+    set;
+}
+
+public DbSet<Proveedor > Proveedores {
+    get;
+    set;
+}
+
+public DbSet<Sucursal > Sucursales {
+    get;
+    set;
+}
+
+public DbSet<Inventario > Inventarios {
+    get;
+    set;
+}
+
+public DbSet<Movimiento > Movimientos {
+    get;
+    set;
+}
+
+}
+}
+
+Y lo mismo en tus modelos, por ejemplo:
+
+En Models/Categoria.cs
+namespace AlmacenApp.Models // 👈 el namespace debe coincidir con el del proyecto {
+    public class Categoria
+
+{
+    public int Id_Categoria
+
+{
+    get;
+    set;
+}
+
+public string Nombre {
+    get;
+    set;
+}
+
+public string Descripcion {
+    get;
+    set;
+}
+
+}
+}
+
+🧱 PASO 3: Limpia y recompila el proyecto
+Haz esto en Visual Studio:
+
+Menú Compilar → Limpiar solución
+
+Luego Compilar → Recompilar solución
+
+Esto borra los binarios antiguos y fuerza a Visual Studio a reconocer los nuevos namespaces.
+
+✅ PASO 4: Confirma que funciona
+Si ahora compilas (Ctrl + Shift + B), el error debería desaparecer.
+Luego puedes continuar con el paso siguiente: crear tus controladores y vistas.
+
+Si quieres, dime exactamente cómo se llama tu proyecto en Visual Studio (por ejemplo: AlmacenWeb, AlmacenApp, etc.), y te indico qué namespace exacto debes usar en todos tus archivos (Models y Data).
+
+Dijiste:
+Mi proyecto se llama InveDB, empezemos desde el incio teniendo eso en cuenta, tambien quiero que todo lo que esa posible de nombres variables etc este es español
+ChatGPT dijo:
+Excelente ✅, partimos desde cero con tu proyecto llamado InveDB, y haremos todo en español, tanto nombres de clases, variables, controladores y vistas.
+Vamos a crear tu aplicación ASP.NET Core MVC + SQL Server, conectada a tu base de datos AlmacenPTest.
+Todo estará bien estructurado, en español y listo para CRUD.
+
+🧭 PASO 1: Crear el proyecto
+Abre Visual Studio 2022.
+
+Selecciona Crear un nuevo proyecto.
+
+Busca y elige ASP.NET Core Web App (Model-View-Controller).
+
+Nómbralo InveDB.
+
+Framework: selecciona .NET 8.0 (LTS).
+
+Clic en Crear.
+
+Visual Studio generará una estructura base con carpetas como:
+
+Controllers/
+Models/
+Views/
+wwwroot/
+Program.cs
+appsettings.json
+⚙️ PASO 2: Configurar la conexión a la base de datos
+Abre el archivo appsettings.json y reemplaza su contenido con esto: {
+    "ConnectionStrings":
+
+{
+    "ConexionSQL": "Server=TU_SERVIDOR_SQL;Database=AlmacenPTest;Trusted_Connection=True;TrustServerCertificate=True;"
+}
+
+,
+"Logging": {
+    "LogLevel":
+
+{
+    "Default": "Information", "Microsoft.AspNetCore": "Warning"
+}
+
+}
+,
+"AllowedHosts": "*"
+}
+
+👉 Sustituye TU_SERVIDOR_SQL por el nombre real de tu servidor.
+Ejemplo:
+
+"Server=localhost\\SQLEXPRESS;Database=AlmacenPTest;Trusted_Connection=True;TrustServerCertificate=True;"
+🧩 PASO 3: Crear el contexto de base de datos (DbContext)
+Clic derecho sobre el proyecto → Agregar → Carpeta → nómbrala Datos.
+
+Dentro de Datos, crea un archivo llamado ContextoAlmacen.cs.
+
+Escribe lo siguiente:
+
+using InveDB.Modelos;
+using Microsoft.EntityFrameworkCore;
+
+namespace InveDB.Datos {
+    public class ContextoAlmacen : DbContext
+
+{
+    public ContextoAlmacen(DbContextOptions<ContextoAlmacen> options) : base(options)
+
+{
+}
+
+public DbSet<Categoria > Categorias {
+    get;
+    set;
+}
+
+public DbSet<Producto > Productos {
+    get;
+    set;
+}
+
+public DbSet<Proveedor > Proveedores {
+    get;
+    set;
+}
+
+public DbSet<Sucursal > Sucursales {
+    get;
+    set;
+}
+
+public DbSet<Inventario > Inventarios {
+    get;
+    set;
+}
+
+public DbSet<Movimiento > Movimientos {
+    get;
+    set;
+}
+
+}
+}
+
+🧱 PASO 4: Crear las clases de modelos (tablas)
+Clic derecho → Agregar → Carpeta → nómbrala Modelos.
+Dentro, crea los archivos siguientes 👇
+
+📁 Modelos/Categoria.cs
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+
+namespace InveDB.Modelos {
+    public class Categoria
+
+{
+    [Key] public int IdCategoria
+
+{
+    get;
+    set;
+}
+
+[Required(ErrorMessage = "El nombre es obligatorio")]
+[StringLength(100)]
+public string Nombre {
+    get;
+    set;
+}
+
+[StringLength(255)]
+public string Descripcion {
+    get;
+    set;
+}
+
+// Relación con Producto
+public ICollection<Producto > Productos {
+    get;
+    set;
+}
+
+}
+}
+
+📁 Modelos/Producto.cs
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace InveDB.Modelos {
+    public class Producto
+
+{
+    [Key] public int IdProducto
+
+{
+    get;
+    set;
+}
+
+[Required]
+[StringLength(100)]
+public string Nombre {
+    get;
+    set;
+}
+
+[StringLength(255)]
+public string Descripcion {
+    get;
+    set;
+}
+
+[Required]
+[StringLength(20)]
+public string UnidadMedida {
+    get;
+    set;
+}
+
+[Required]
+[ForeignKey("Categoria")]
+public int IdCategoria {
+    get;
+    set;
+}
+
+[Column(TypeName = "decimal(10,2)")]
+public decimal PrecioUnitario {
+    get;
+    set;
+}
+
+public Categoria Categoria {
+    get;
+    set;
+}
+
+}
+}
+
+📁 Modelos/Proveedor.cs
+using System.ComponentModel.DataAnnotations;
+
+namespace InveDB.Modelos {
+    public class Proveedor
+
+{
+    [Key] public int IdProveedor
+
+{
+    get;
+    set;
+}
+
+[Required]
+[StringLength(100)]
+public string Nombre {
+    get;
+    set;
+}
+
+[StringLength(20)]
+public string Telefono {
+    get;
+    set;
+}
+
+[StringLength(255)]
+public string Direccion {
+    get;
+    set;
+}
+
+}
+}
+
+📁 Modelos/Sucursal.cs
+using System.ComponentModel.DataAnnotations;
+
+namespace InveDB.Modelos {
+    public class Sucursal
+
+{
+    [Key] public int IdSucursal
+
+{
+    get;
+    set;
+}
+
+[Required]
+[StringLength(100)]
+public string Nombre {
+    get;
+    set;
+}
+
+[StringLength(255)]
+public string Direccion {
+    get;
+    set;
+}
+
+[StringLength(20)]
+public string Telefono {
+    get;
+    set;
+}
+
+}
+}
+
+📁 Modelos/Inventario.cs
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace InveDB.Modelos {
+    public class Inventario
+
+{
+    [Key] [ForeignKey("Producto")] public int IdProducto
+
+{
+    get;
+    set;
+}
+
+[Column(TypeName = "decimal(10,2)")]
+public decimal Cantidad {
+    get;
+    set;
+}
+
+public Producto Producto {
+    get;
+    set;
+}
+
+}
+}
+
+📁 Modelos/Movimiento.cs
+using System;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace InveDB.Modelos {
+    public class Movimiento
+
+{
+    [Key] public int IdMovimiento
+
+{
+    get;
+    set;
+}
+
+[Required]
+[ForeignKey("Producto")]
+public int IdProducto {
+    get;
+    set;
+}
+
+[Required]
+[StringLength(1)]
+[RegularExpression("[ES]", ErrorMessage = "El tipo debe ser 'E' (Entrada) o 'S' (Salida)")]
+public string Tipo {
+    get;
+    set;
+}
+
+[Required]
+[Column(TypeName = "decimal(10,2)")]
+public decimal Cantidad {
+    get;
+    set;
+}
+
+public DateTime Fecha {
+    get;
+    set;
+}
+
+= DateTime.Now;
+
+[ForeignKey("Proveedor")]
+public int? IdProveedor {
+    get;
+    set;
+}
+
+[ForeignKey("Sucursal")]
+public int? IdSucursal {
+    get;
+    set;
+}
+
+public Producto Producto {
+    get;
+    set;
+}
+
+public Proveedor Proveedor {
+    get;
+    set;
+}
+
+public Sucursal Sucursal {
+    get;
+    set;
+}
+
+}
+}
+
+🧠 PASO 5: Registrar el contexto en Program.cs
+Abre Program.cs y ajusta así:
+
+using InveDB.Datos;
+using Microsoft.EntityFrameworkCore;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Registrar el contexto de base de datos
+builder.Services.AddDbContext<ContextoAlmacen > (options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("ConexionSQL")));
+
+builder.Services.AddControllersWithViews();
+
+var app = builder.Build();
+
+if (!app.Environment.IsDevelopment()) {
+    app .UseExceptionHandler("/Home/Error");
+}
+
+app.UseStaticFiles();
+app.UseRouting();
+app.UseAuthorization();
+
+app.MapControllerRoute( name: "default", pattern: "{controlador=Inicio}/{accion=Index}/{id?}");
+
+app.Run();
+🧱 PASO 6: Generar CRUD automáticamente
+Clic derecho en la carpeta Controllers → Agregar → Nuevo elemento con scaffolding...
+
+Elige:
+"Controlador MVC con vistas, usando Entity Framework"
+
+En “Clase de modelo” elige Categoria
+
+En “Clase de contexto de datos” selecciona ContextoAlmacen
+
+Clic en Agregar
+
+Visual Studio generará:
+
+Controladores/CategoriasController.cs
+
+Vistas dentro de Views/Categorias/
+
+Repite este proceso con las demás entidades (Producto, Proveedor, Sucursal, Movimiento, Inventario).
+
+✅ PASO 7: Ejecutar la aplicación
+Pulsa Ctrl + F5
+
+En el navegador, prueba accediendo a:
+
+https://localhost:xxxx/Categorias
+Crea, edita y elimina categorías para confirmar que todo se guarda correctamente en SQL Server.
+
+🚀 Próximos pasos (opcionales)
+Una vez que esté funcionando:
+
+Agregar Bootstrap 5 o Tailwind para diseño moderno.
+
+Validar entradas con DataAnnotations.
+
+Crear un menú de navegación entre secciones.
+
+Agregar vistas personalizadas para reportes o movimientos.
+
+¿Quieres que a continuación te genere los controladores CRUD completos en español (por ejemplo, CategoriasController) para agregarlos a tu proyecto directamente?
+
+Dijiste:
+Es el paso 4 necesario aun cuando ya esta crreada la base de datos en mi servidor? si es asi, para que sirve
+ChatGPT dijo:
+Excelente pregunta 💡 — y muy importante.
+👉 Sí, el paso 4 (crear las clases de modelos) sigue siendo necesario, incluso si tu base de datos ya existe en tu servidor SQL Server.
+
+Te explico por qué y qué función cumplen esas clases.
+
+🎯 En resumen:
+Las clases del paso 4 no crean la base de datos (en tu caso, ya la tienes).
+👉 Su función es representar las tablas existentes dentro del proyecto ASP.NET para que tu aplicación pueda:
+
+Leer datos desde SQL Server
+
+Guardar nuevos registros
+
+Editar o eliminar
+
+Mostrar la información en las vistas
+
+Estas clases son el “puente lógico” entre C# y SQL Server.
+
+🧩 Ejemplo sencillo
+Tú tienes en la base de datos una tabla real llamada:
+
+CREATE TABLE Categoria (
+    id_categoria INT PRIMARY KEY IDENTITY,
+    nombre VARCHAR(100) NOT NULL,
+    descripcion VARCHAR(255)
+);
+ASP.NET no puede leer ni entender directamente las tablas SQL.
+Necesita una clase C# equivalente, como:
+
+public class Categoria {
+    public int IdCategoria
+
+{
+    get;
+    set;
+}
+
+public string Nombre {
+    get;
+    set;
+}
+
+public string Descripcion {
+    get;
+    set;
+}
+
+}
+Esto se llama un modelo de entidad (Entity Model).
+Entity Framework usa esta clase para saber:
+
+Qué tabla consultar (Categoria)
+
+Qué columnas leer (IdCategoria, Nombre, Descripcion)
+
+Cómo mapear los tipos de datos (VARCHAR → string, INT → int)
+
+🧠 Entonces…
+Hay dos formas de usar Entity Framework cuando la base de datos ya existe:
+
+Enfoque Qué hace Cuándo se usa
+Code First Crea la base de datos a partir del código (tus clases). Cuando aún no existe la BD.
+Database First Genera las clases automáticamente desde una base de datos ya existente. Cuando ya tienes la BD (tu caso).
+⚙️ OPCIÓN 1 (Manual, como el paso 4)
+👉 Creas tú mismo las clases de modelo, solo escribiendo sus propiedades.
+Ventajas:
+
+Controlas los nombres en español.
+
+Puedes modificar relaciones o validaciones fácilmente.
+
+No dependes del diseñador visual.
+
+⚙️ OPCIÓN 2 (Automática — “Database First”)
+Si prefieres que Visual Studio genere automáticamente las clases a partir de tu base de datos AlmacenPTest, puedes hacerlo así:
+
+Abre la Consola del Administrador de Paquetes (menú Herramientas → Administrador de paquetes NuGet → Consola del administrador de paquetes).
+
+Escribe este comando:
+
+Scaffold-DbContext "Server=TU_SERVIDOR;Database=AlmacenPTest;Trusted_Connection=True;TrustServerCertificate=True;" Microsoft.EntityFrameworkCore.SqlServer -OutputDir Modelos -Context ContextoAlmacen -DataAnnotations -Force
+Esto hará automáticamente:
+
+Crear todas las clases modelo en la carpeta Modelos/
+
+Crear el archivo ContextoAlmacen.cs con las tablas mapeadas
+
+⚠️ Nota: Debes tener instalados los paquetes de Entity Framework Core:
+
+Microsoft.EntityFrameworkCore.SqlServer
+Microsoft.EntityFrameworkCore.Tools
+🧾 En resumen:
+Situación ¿Necesito el paso 4? Por qué
+La BD no existe todavía ✅ Sí Porque EF necesita crearla desde las clases
+La BD ya existe, pero quiero escribir el código manualmente en español ✅ Sí Para definir modelos personalizados
+La BD ya existe, y quiero que EF lo haga por mí ⚙️ No, puedes usar Scaffold-DbContext EF generará las clases automáticamente
+¿Quieres que te guíe paso a paso con el método automático (Database First) para generar tus modelos y contexto directamente desde tu base de datos AlmacenPTest?
+Así evitas escribirlos manualmente y los tendrás listos en segundos.
+
+Dijiste:
+PM > Scaffold - DbContext "Server=MAINPC\\REALDB;Database=AlmacenPTest;Trusted_Connection=True;TrustServerCertificate=True;" Microsoft.EntityFrameworkCore.SqlServer - OutputDir Modelos - Context ContextoAlmacen - DataAnnotations - Force
+Scaffold : El término 'Scaffold' no se reconoce como nombre de un cmdlet, función, archivo de script o programa ejecutable. Compruebe si escribió correctamente el nombre o, si incluyó una ruta de acceso, compruebe que dicha ruta es correcta e inténtelo de nuevo.
+En línea: 1 Carácter: 1 + Scaffold - DbContext "Server=MAINPC\\REALDB;Database=AlmacenPTest;Tru ... + ~ ~ ~ ~ ~ ~ ~ ~
++ CategoryInfo : ObjectNotFound: (Scaffold:String) [], CommandNotFoundException + FullyQualifiedErrorId : CommandNotFoundException
+
+ChatGPT dijo:
+Perfecto 🎯 — ese error es muy común y tiene una causa sencilla:
+el comando que escribiste no se reconoce porque el prefijo y los espacios son incorrectos, o no tienes instalado el paquete de herramientas de Entity Framework Core.
+
+Vamos a solucionarlo paso a paso 💪
+
+⚙️ PASO 1: Abre la consola correcta
+En Visual Studio, abre la consola Administrador de paquetes NuGet:
+
+🧭 Menú superior →
+Herramientas → Administrador de paquetes NuGet → Consola del Administrador de paquetes
+
+Debe aparecer una ventana en la parte inferior que diga algo como:
+
+PM >
+Ahí es donde ejecutarás los comandos.
+
+⚙️ PASO 2: Instala las herramientas necesarias
+Ejecuta estos dos comandos, uno por uno:
+
+Install-Package Microsoft.EntityFrameworkCore.SqlServer
+Install-Package Microsoft.EntityFrameworkCore.Tools
+Esto instala todo lo necesario para que Visual Studio reconozca Scaffold-DbContext.
+
+⚙️ PASO 3: Usa el comando correcto (sin espacios extra)
+Tu comando tiene espacios incorrectos entre los guiones.
+Debe ser exactamente así (sin espacios entre Scaffold-DbContext):
+
+Scaffold-DbContext "Server=MAINPC\REALDB;Database=AlmacenPTest;Trusted_Connection=True;TrustServerCertificate=True;" Microsoft.EntityFrameworkCore.SqlServer -OutputDir Modelos -Context ContextoAlmacen -DataAnnotations -Force
+🔹 Asegúrate de:
+
+No dejar espacios entre Scaffold y -DbContext
+
+Usar barras invertidas dobles \\ si las escribes en cadena C#, pero en la consola usa una sola (\)
+
+Mantener las mayúsculas y minúsculas igual (por convención)
+
+🧠 PASO 4: Verifica el resultado
+Después de ejecutar correctamente el comando, verás:
+
+Una carpeta nueva llamada Modelos
+
+Dentro, todas las clases (por cada tabla de tu BD)
+
+Un archivo ContextoAlmacen.cs dentro de la carpeta raíz del proyecto o también en Modelos (dependiendo del comando)
+
+Ejemplo de resultado:
+
+Modelos/
+ ├── Categoria.cs
+ ├── Producto.cs
+ ├── Proveedor.cs
+ ├── Movimiento.cs
+ ├── Inventario.cs
+ └── Sucursal.cs
+ContextoAlmacen.cs
+🧾 PASO 5: Prueba que todo compile
+En Visual Studio, ve a Compilar → Recompilar solución
+
+Si todo sale bien, no deberías ver errores
+
+Ya puedes generar controladores y vistas automáticamente con el Scaffolding de MVC
+
+✅ En resumen
+Problema	Solución
+'Scaffold' no se reconoce	Usa Scaffold-DbContext (con guion), no Scaffold - DbContext
+Falta de herramientas EF	Instala Microsoft.EntityFrameworkCore.Tools
+Error de servidor	Verifica tu cadena de conexión (Server=MAINPC\REALDB;Database=AlmacenPTest;...)
+¿Quieres que te indique exactamente qué comando ejecutar según si usas autenticación de Windows o usuario y contraseña (SQL Auth)?
+Así no hay margen de error al generar tus modelos.
+
+Dijiste:
+Cuando hice el paso de registrar el contexto en Program.cs, ya habia cosas predeterminadas ahi, no las borre asi que incluyendolas quedo asi
+using InveDB.Datos;
+using Microsoft.EntityFrameworkCore;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Add services to the container.
+builder.Services.AddRazorPages();
+
+
+// Registrar el contexto de base de datos
+builder.Services.AddDbContext<ContextoAlmacen>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("ConexionSQL")));
+
+builder.Services.AddControllersWithViews();
+
+var app = builder.Build();
+// Configure the HTTP request pipeline.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/Home/Error");
+    app.UseHsts();
+}
+
+app.UseHttpsRedirection();
+app.UseStaticFiles();
+
+app.UseRouting();
+
+app.UseAuthorization();
+
+app.MapRazorPages();
+
+app.Run();
+
+app.UseAuthorization();
+
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controlador=Inicio}/{accion=Index}/{id?}");
+
+app.Run();
+ChatGPT dijo:
+Muy bien 👏, hiciste un paso importante, y es normal que Visual Studio agregue código predeterminado.
+Sin embargo, lo que tienes ahora tiene duplicaciones y un pequeño desorden en el orden de ejecución, lo que puede provocar errores al ejecutar la app.
+
+Vamos a dejar tu Program.cs limpio, ordenado y correcto para tu proyecto InveDB con MVC + SQL Server.
+Te explico paso a paso y luego te dejo el código final listo para copiar y pegar ✅
+
+🚨 Problemas en tu versión actual
+Hay dos llamadas a app.Run();, lo que causa error — solo debe haber una al final.
+
+app.UseAuthorization(); aparece dos veces — debe estar solo una.
+
+Se están mapeando Razor Pages y Controladores MVC.
+Como estamos usando MVC con controladores, no necesitas MapRazorPages() (a menos que mezcles ambos estilos).
+
+El orden correcto de los middlewares importa: UseRouting() → UseAuthorization() → MapControllerRoute() → Run().
+
+✅ Código limpio y funcional para Program.cs
+Copia y reemplaza el contenido de tu archivo por este:
+
+using InveDB.Datos;
+using Microsoft.EntityFrameworkCore;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// ---------------------------
+// 1️⃣ Registrar servicios
+// ---------------------------
+
+// Registrar el contexto de base de datos con la cadena de conexión
+builder.Services.AddDbContext<ContextoAlmacen>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("ConexionSQL")));
+
+// Agregar soporte para controladores y vistas MVC
+builder.Services.AddControllersWithViews();
+
+var app = builder.Build();
+
+// ---------------------------
+// 2️⃣ Configurar la aplicación
+// ---------------------------
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/Home/Error");
+    app.UseHsts(); // Activa seguridad HTTPS
+}
+
+app.UseHttpsRedirection();
+app.UseStaticFiles();
+
+app.UseRouting();
+
+app.UseAuthorization();
+
+// ---------------------------
+// 3️⃣ Configurar rutas MVC
+// ---------------------------
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controller=Inicio}/{action=Index}/{id?}");
+
+// ---------------------------
+// 4️⃣ Ejecutar la aplicación
+// ---------------------------
+app.Run();
+💡 Explicación breve
+Sección	Qué hace
+builder.Services.AddDbContext	Conecta tu aplicación a SQL Server usando tu clase ContextoAlmacen.
+AddControllersWithViews	Activa el patrón MVC (Model–View–Controller).
+UseStaticFiles	Permite servir archivos CSS, JS, imágenes, etc.
+UseRouting y MapControllerRoute	Indica cómo se accede a los controladores y vistas (por ejemplo /Categorias/Index).
+app.Run()	Inicia el servidor web interno de ASP.NET Core.
+🧠 Nota adicional
+Si algún día quisieras usar también Razor Pages (por ejemplo, páginas sin controlador), podrías mantener:
+
+builder.Services.AddRazorPages();
+app.MapRazorPages();
+Pero en tu caso —como estás trabajando con MVC y controladores CRUD— no es necesario.
+
+¿Quieres que te muestre ahora cómo generar tu primer controlador CRUD (por ejemplo CategoriasController) con las vistas automáticamente, conectado a SQL Server?
+
+Dijiste:
+InvalidOperationException: The ConnectionString property has not been initialized.
+
+    Microsoft.Data.SqlClient.SqlConnection.PermissionDemand()
+    Microsoft.Data.SqlClient.SqlConnectionFactory.PermissionDemand(DbConnection outerConnection)
+    Microsoft.Data.ProviderBase.DbConnectionInternal.TryOpenConnectionInternal(DbConnection outerConnection, DbConnectionFactory connectionFactory, TaskCompletionSource<DbConnectionInternal> retry, DbConnectionOptions userOptions)
+    Microsoft.Data.ProviderBase.DbConnectionClosed.TryOpenConnection(DbConnection outerConnection, DbConnectionFactory connectionFactory, TaskCompletionSource<DbConnectionInternal> retry, DbConnectionOptions userOptions)
+    Microsoft.Data.SqlClient.SqlConnection.TryOpen(TaskCompletionSource<DbConnectionInternal> retry, SqlConnectionOverrides overrides)
+    Microsoft.Data.SqlClient.SqlConnection.InternalOpenAsync(CancellationToken cancellationToken)
+    Microsoft.EntityFrameworkCore.Storage.RelationalConnection.OpenInternalAsync(bool errorsExpected, CancellationToken cancellationToken)
+    Microsoft.EntityFrameworkCore.Storage.RelationalConnection.OpenInternalAsync(bool errorsExpected, CancellationToken cancellationToken)
+    Microsoft.EntityFrameworkCore.Storage.RelationalConnection.OpenAsync(CancellationToken cancellationToken, bool errorsExpected)
+    Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+    Microsoft.EntityFrameworkCore.Query.Internal.SingleQueryingEnumerable<T>+AsyncEnumerator.InitializeReaderAsync(AsyncEnumerator enumerator, CancellationToken cancellationToken)
+    Microsoft.EntityFrameworkCore.SqlServer.Storage.Internal.SqlServerExecutionStrategy.ExecuteAsync<TState, TResult>(TState state, Func<DbContext, TState, CancellationToken, Task<TResult>> operation, Func<DbContext, TState, CancellationToken, Task<ExecutionResult<TResult>>> verifySucceeded, CancellationToken cancellationToken)
+    Microsoft.EntityFrameworkCore.Query.Internal.SingleQueryingEnumerable<T>+AsyncEnumerator.MoveNextAsync()
+    System.Runtime.CompilerServices.ConfiguredValueTaskAwaitable<TResult>+ConfiguredValueTaskAwaiter.GetResult()
+    Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToListAsync<TSource>(IQueryable<TSource> source, CancellationToken cancellationToken)
+    Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToListAsync<TSource>(IQueryable<TSource> source, CancellationToken cancellationToken)
+    InveDB.Controles.CategoriasController.Index() in CategoriasController.cs
+
+                _context = context;
+}
+
+// GET: Categorias
+public async Task<IActionResult > Index() {
+    return View(await _context.Categorias.ToListAsync());
+}
+
+// GET: Categorias/Details/5
+public async Task<IActionResult > Details(int? id) {
+    if (id == null) Microsoft.AspNetCore.Mvc.Infrastructure.ActionMethodExecutor+TaskOfIActionResultExecutor.Execute(ActionContext actionContext, IActionResultTypeMapper mapper, ObjectMethodExecutor executor, object controller, object[] arguments) System.Threading.Tasks.ValueTask<TResult>.get_Result() Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeActionMethodAsync>g__Awaited|12_0(ControllerActionInvoker invoker, ValueTask<IActionResult> actionResultValueTask) Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeNextActionFilterAsync>g__Awaited|10_0(ControllerActionInvoker invoker, Task lastTask, State next, Scope scope, object state, bool isCompleted) Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Rethrow(ActionExecutedContextSealed context) Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Next(ref State next, ref Scope scope, ref object state, ref bool isCompleted) Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.InvokeInnerFilterAsync() Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeNextResourceFilter>g__Awaited|25_0(ResourceInvoker invoker, Task lastTask, State next, Scope scope, object state, bool isCompleted) Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.Rethrow(ResourceExecutedContextSealed context) Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.Next(ref State next, ref Scope scope, ref object state, ref bool isCompleted) Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.InvokeFilterPipelineAsync() Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope) Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope) Microsoft.AspNetCore.Authorization.AuthorizationMiddleware.Invoke(HttpContext context) Microsoft.AspNetCore.Authentication.AuthenticationMiddleware.Invoke(HttpContext context) Microsoft.AspNetCore.Diagnostics.DeveloperExceptionPageMiddlewareImpl.Invoke(HttpContext context) ChatGPT dijo: Perfecto 👍, el error que estás recibiendo: InvalidOperationException: The ConnectionString property has not been initialized. significa que tu cadena de conexión (ConnectionString) no está configurada correctamente o no está siendo encontrada por Entity Framework Core. Vamos a resolverlo paso a paso 👇 🧭 1️⃣ Revisar tu archivo appsettings.json Abre tu archivo appsettings.json y asegúrate de que tenga algo así:
+
+{
+    "ConnectionStrings":
+
+{
+    "ConexionSQL": "Server=MAINPC\\REALDB;Database=AlmacenPTest;Trusted_Connection=True;TrustServerCertificate=True;"
+}
+
+,
+"Logging": {
+    "LogLevel":
+
+{
+    "Default": "Information", "Microsoft.AspNetCore": "Warning"
+}
+
+}
+,
+"AllowedHosts": "*"
+}
+
+✅ Puntos importantes:
+
+Debe existir la sección "ConnectionStrings" (con ese nombre exacto).
+
+La clave "ConexionSQL" debe coincidir exactamente con el nombre que usas en Program.cs.
+
+Verifica que la cadena sea correcta (nombre del servidor, instancia y base de datos).
+
+🧭 2️⃣ Verifica tu Program.cs
+Tu Program.cs debe registrar correctamente el contexto usando el mismo nombre de la cadena de conexión.
+
+using InveDB.Datos;
+using Microsoft.EntityFrameworkCore;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Registrar el contexto de base de datos
+builder.Services.AddDbContext<ContextoAlmacen > (options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("ConexionSQL")));
+
+builder.Services.AddControllersWithViews();
+
+var app = builder.Build();
+
+if (!app.Environment.IsDevelopment()) {
+    app .UseExceptionHandler("/Home/Error");
+    app .UseHsts();
+}
+
+app.UseHttpsRedirection();
+app.UseStaticFiles();
+
+app.UseRouting();
+app.UseAuthorization();
+
+app.MapControllerRoute( name: "default", pattern: "{controller=Inicio}/{action=Index}/{id?}");
+
+app.Run();
+🔎 Observa que la clave "ConexionSQL" en este código debe coincidir exactamente con la que pusiste en appsettings.json.
+
+🧭 3️⃣ Asegúrate de que tu clase ContextoAlmacen use el constructor correcto
+Abre el archivo ContextoAlmacen.cs (dentro de tu carpeta Datos o Modelos, según lo que hiciste con el scaffolding) y revisa que tenga un constructor como este:
+
+using Microsoft.EntityFrameworkCore;
+
+namespace InveDB.Datos {
+    public class ContextoAlmacen : DbContext
+
+{
+    public ContextoAlmacen(DbContextOptions<ContextoAlmacen> options) : base(options)
+
+{
+}
+
+public DbSet<Categoria > Categorias {
+    get;
+    set;
+}
+
+public DbSet<Producto > Productos {
+    get;
+    set;
+}
+
+public DbSet<Proveedor > Proveedores {
+    get;
+    set;
+}
+
+public DbSet<Sucursal > Sucursales {
+    get;
+    set;
+}
+
+public DbSet<Inventario > Inventarios {
+    get;
+    set;
+}
+
+public DbSet<Movimiento > Movimientos {
+    get;
+    set;
+}
+
+}
+}
+
+Si falta ese constructor o si tiene un constructor vacío, EF Core no podrá obtener la conexión y te lanzará exactamente ese error.
+
+🧭 4️⃣ Limpia y reconstruye
+Después de corregir los pasos anteriores:
+
+Guarda todos los archivos.
+
+En Visual Studio, ve a:
+
+Compilar → Limpiar solución
+Compilar → Compilar solución
+Ejecuta tu aplicación nuevamente.
+
+🧩 Resultado esperado
+Después de esto, tu aplicación debería conectarse correctamente al SQL Server.
+Al acceder a /Categorias (o cualquier controlador que use _context), ya no debe aparecer el error de conexión.
+
+¿Quieres que revisemos juntos tu clase ContextoAlmacen.cs para confirmar que el constructor esté correcto? Si me pegas su contenido aquí, te indico exactamente qué línea ajustar.
+
+Dijiste:
+Este es appseting {
+    "ConnectionStrings":
+
+{
+    "DefaultConnection": "Server=MAINPC\\REALDB;Database=AlmacenPTest;User Id=sa;Password=FilianEnjoyer;Trusted_Connection=False;MultipleActiveResultSets=true;TrustServerCertificate=True;"
+}
+
+,
+"Logging": {
+    "LogLevel":
+
+{
+    "Default": "Information", "Microsoft.AspNetCore": "Warning"
+}
+
+}
+,
+"AllowedHosts": "*"
+}
+
+Este Program.cs
+using InveDB.Datos;
+using Microsoft.EntityFrameworkCore;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// ---------------------------
+// 1️ Registrar servicios
+// ---------------------------
+
+// Registrar el contexto de base de datos con la cadena de conexión
+builder.Services.AddDbContext<ContextoAlmacen > (options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("ConexionSQL")));
+
+// Agregar soporte para controladores y vistas MVC
+builder.Services.AddControllersWithViews();
+
+builder.Services.AddRazorPages();
+var app = builder.Build();
+
+// ---------------------------
+// 2️ Configurar la aplicación
+// ---------------------------
+
+if (!app.Environment.IsDevelopment()) {
+    app .UseExceptionHandler("/Home/Error");
+    app .UseHsts();
+    // Activa seguridad HTTPS
+}
+
+app.UseHttpsRedirection();
+app.UseStaticFiles();
+
+app.UseRouting();
+
+app.UseAuthorization();
+
+app.MapRazorPages();
+
+// ---------------------------
+// 3️ Configurar rutas MVC
+// ---------------------------
+app.MapControllerRoute( name: "default", pattern: "{controller=Inicio}/{action=Index}/{id?}");
+
+// ---------------------------
+// 4️ Ejecutar la aplicación
+// ---------------------------
+app.Run();
+y este contexto
+using Microsoft.EntityFrameworkCore;
+using InveDB.Modelos;
+namespace InveDB.Datos {
+    public class ContextoAlmacen : DbContext
+
+{
+    public ContextoAlmacen(DbContextOptions<ContextoAlmacen> options) : base(options)
+
+{
+}
+
+public DbSet<Categoria > Categorias {
+    get;
+    set;
+}
+
+public DbSet<Producto > Productos {
+    get;
+    set;
+}
+
+public DbSet<Proveedor > Proveedores {
+    get;
+    set;
+}
+
+public DbSet<Sucursal > Sucursales {
+    get;
+    set;
+}
+
+public DbSet<Inventario > Inventarios {
+    get;
+    set;
+}
+
+public DbSet<Movimiento > Movimientos {
+    get;
+    set;
+}
+
+}
+}
+
+ChatGPT dijo:
+Perfecto 🎯 — ya con esto puedo ver exactamente por qué estás recibiendo el error:
+
+💥 Problema principal
+Tu Program.cs está buscando una cadena llamada:
+
+builder.Configuration.GetConnectionString("ConexionSQL")
+pero en tu appsettings.json la cadena se llama:
+
+"DefaultConnection": "Server=MAINPC\\REALDB;Database=AlmacenPTest;..."
+👉 Por eso aparece el error:
+
+The ConnectionString property has not been initialized.
+
+ASP.NET Core busca "ConexionSQL", no la encuentra, y por lo tanto no inicializa la conexión.
+
+✅ Solución
+Tienes dos formas de resolverlo (elige una):
+
+🔹 Opción 1 — Cambiar el nombre en Program.cs (recomendado)
+Edita esta línea en tu Program.cs:
+
+options.UseSqlServer(builder.Configuration.GetConnectionString("ConexionSQL")));
+y reemplázala por:
+
+options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+👉 Esto hará que coincida con tu appsettings.json.
+
+🔹 Opción 2 — Cambiar el nombre en appsettings.json
+Si prefieres mantener el nombre "ConexionSQL", cambia esta parte de tu appsettings.json:
+
+"ConnectionStrings": {
+    "DefaultConnection": "Server=MAINPC\\REALDB;Database=AlmacenPTest;User Id=sa;Password=FilianEnjoyer;Trusted_Connection=False;MultipleActiveResultSets=true;TrustServerCertificate=True;"
+}
+
+por esto:
+
+"ConnectionStrings": {
+    "ConexionSQL": "Server=MAINPC\\REALDB;Database=AlmacenPTest;User Id=sa;Password=FilianEnjoyer;Trusted_Connection=False;MultipleActiveResultSets=true;TrustServerCertificate=True;"
+}
+
+💡 Recomendación
+La opción 1 (ajustar Program.cs) es mejor, porque "DefaultConnection" es el nombre por defecto que usa Visual Studio cuando creas un proyecto nuevo.
+Además, facilita el mantenimiento si más adelante agregas autenticación u otros servicios.
+
+🚀 Después de hacer el cambio
+Guarda los archivos.
+
+En Visual Studio:
+
+Compilar → Limpiar solución
+Compilar → Compilar solución
+Ejecuta de nuevo la aplicación.
+
+Tu conexión a SQL Server debería funcionar correctamente ✅
+
+¿Quieres que el siguiente paso sea generar un controlador y vistas CRUD automáticamente para, por ejemplo, la tabla Categoria?
+Así verías datos reales desde tu base SQL Server.
+
+Dijiste:
+SqlException: Invalid object name 'Categorias'.
+
+Microsoft.Data.SqlClient.SqlCommand + < > c.<ExecuteDbDataReaderAsync > b__211_0(Task<SqlDataReader> result)
+System.Threading.Tasks.ContinuationResultTaskFromResultTask<TAntecedentResult, TResult > .InnerInvoke()
+System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, object state)
+System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, object state)
+System.Threading.Tasks.Task.ExecuteWithThreadLocal(ref Task currentTaskSlot, Thread threadPoolThread)
+Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+Microsoft.EntityFrameworkCore.Query.Internal.SingleQueryingEnumerable<T > + AsyncEnumerator.InitializeReaderAsync(AsyncEnumerator enumerator, CancellationToken cancellationToken)
+Microsoft.EntityFrameworkCore.SqlServer.Storage.Internal.SqlServerExecutionStrategy.ExecuteAsync<TState, TResult > (TState state, Func<DbContext, TState, CancellationToken, Task<TResult>> operation, Func<DbContext, TState, CancellationToken, Task<ExecutionResult<TResult>>> verifySucceeded, CancellationToken cancellationToken)
+Microsoft.EntityFrameworkCore.Query.Internal.SingleQueryingEnumerable<T > + AsyncEnumerator.MoveNextAsync()
+System.Runtime.CompilerServices.ConfiguredValueTaskAwaitable<TResult > + ConfiguredValueTaskAwaiter.GetResult()
+Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToListAsync<TSource > (IQueryable<TSource> source, CancellationToken cancellationToken)
+Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToListAsync<TSource > (IQueryable<TSource> source, CancellationToken cancellationToken)
+InveDB.Controles.CategoriasController.Index() in CategoriasController.cs
+
+_context = context;
+}
+
+// GET: Categorias
+public async Task<IActionResult > Index() {
+    return View(await _context.Categorias.ToListAsync());
+}
+
+// GET: Categorias/Details/5
+public async Task<IActionResult > Details(int? id) {
+    if (id == null) Microsoft.AspNetCore.Mvc.Infrastructure.ActionMethodExecutor+TaskOfIActionResultExecutor.Execute(ActionContext actionContext, IActionResultTypeMapper mapper, ObjectMethodExecutor executor, object controller, object[] arguments) System.Threading.Tasks.ValueTask<TResult>.get_Result() Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeActionMethodAsync>g__Awaited|12_0(ControllerActionInvoker invoker, ValueTask<IActionResult> actionResultValueTask) Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeNextActionFilterAsync>g__Awaited|10_0(ControllerActionInvoker invoker, Task lastTask, State next, Scope scope, object state, bool isCompleted) Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Rethrow(ActionExecutedContextSealed context) Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Next(ref State next, ref Scope scope, ref object state, ref bool isCompleted) Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeInnerFilterAsync>g__Awaited|13_0(ControllerActionInvoker invoker, Task lastTask, State next, Scope scope, object state, bool isCompleted) Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeNextResourceFilter>g__Awaited|25_0(ResourceInvoker invoker, Task lastTask, State next, Scope scope, object state, bool isCompleted) Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.Rethrow(ResourceExecutedContextSealed context) Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.Next(ref State next, ref Scope scope, ref object state, ref bool isCompleted) Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeFilterPipelineAsync>g__Awaited|20_0(ResourceInvoker invoker, Task lastTask, State next, Scope scope, object state, bool isCompleted) Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope) Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope) Microsoft.AspNetCore.Authorization.AuthorizationMiddleware.Invoke(HttpContext context) Microsoft.AspNetCore.Authentication.AuthenticationMiddleware.Invoke(HttpContext context) Microsoft.AspNetCore.Diagnostics.DeveloperExceptionPageMiddlewareImpl.Invoke(HttpContext context) ChatGPT dijo: Perfecto 👌, ya estás muy cerca de tenerlo funcionando. Este error: SqlException: Invalid object name 'Categorias'. significa que Entity Framework está intentando leer una tabla llamada Categorias (plural), pero en tu base de datos real la tabla se llama Categoria (singular). ⚙️ Causa exacta Cuando ejecutaste el comando de scaffolding, EF Core generó las clases basándose en las tablas. Sin embargo, el DbSet en tu contexto se llama: public DbSet<Categoria> Categorias
+
+{
+    get;
+    set;
+}
+
+👉 EF Core, por convención, usa el nombre del DbSet (en plural) como nombre de tabla si no se indica lo contrario.
+
+Tu base de datos tiene:
+
+CREATE TABLE Categoria (
+    id_categoria INT PRIMARY KEY IDENTITY,
+    nombre VARCHAR(100) NOT NULL,
+    descripcion VARCHAR(255)
+);
+y no tiene una tabla Categorias.
+
+✅ Solución 1 (recomendada): decirle a EF el nombre real de la tabla
+Abre tu clase Categoria.cs (dentro de Modelos)
+y agrega el atributo [Table("Categoria")] así:
+
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace InveDB.Modelos {
+    [Table("Categoria")] // 👈 Esto es lo importante public class Categoria
+
+{
+    [Key] public int id_categoria
+
+{
+    get;
+    set;
+}
+
+[Required]
+[StringLength(100)]
+public string nombre {
+    get;
+    set;
+}
+
+[StringLength(255)]
+public string descripcion {
+    get;
+    set;
+}
+
+}
+}
+
+Haz lo mismo en las demás clases si los nombres no coinciden (por ejemplo, si tienes Proveedor pero EF busca Proveedors).
+
+✅ Solución 2 (alternativa): cambiar los nombres de las tablas en la BD
+Si estás empezando el proyecto y prefieres mantener todo en plural, puedes hacerlo así:
+
+EXEC sp_rename 'Categoria', 'Categorias';
+EXEC sp_rename 'Producto', 'Productos';
+EXEC sp_rename 'Proveedor', 'Proveedores';
+EXEC sp_rename 'Sucursal', 'Sucursales';
+EXEC sp_rename 'Inventario', 'Inventarios';
+EXEC sp_rename 'Movimiento', 'Movimientos';
+Pero no lo recomiendo si ya tienes datos o relaciones, porque tendrías que revisar todas las claves foráneas.
+
+💡 Consejo profesional
+Para evitar este tipo de errores en todos los modelos a la vez, puedes hacerlo globalmente dentro de tu ContextoAlmacen.cs:
+
+protected override void OnModelCreating(ModelBuilder modelBuilder) {
+    modelBuilder .Entity<Categoria>().ToTable("Categoria");
+    modelBuilder .Entity<Producto>().ToTable("Producto");
+    modelBuilder .Entity<Proveedor>().ToTable("Proveedor");
+    modelBuilder .Entity<Sucursal>().ToTable("Sucursal");
+    modelBuilder .Entity<Inventario>().ToTable("Inventario");
+    modelBuilder .Entity<Movimiento>().ToTable("Movimiento");
+}
+
+Así ya no necesitas usar [Table("...")] en cada clase.
+
+🚀 Luego de aplicar los cambios
+Guarda todos los archivos.
+
+En Visual Studio → Compilar → Compilar solución.
+
+Ejecuta nuevamente la aplicación.
+
+Prueba entrar a /Categorias → ya debería mostrar la lista (aunque esté vacía).
+
+¿Quieres que te muestre cómo crear los CRUD completos (listar, agregar, editar, eliminar) para Categoria de forma automática desde Visual Studio?
+
+Dijiste:
+using System.ComponentModel.DataAnnotations;
+
+namespace InveDB.Modelos {
+    public class Categoria
+
+{
+    [Key] public int IdCategoria
+
+{
+    get;
+    set;
+}
+
+[Required(ErrorMessage = "El nombre es obligatorio")]
+[StringLength(100)]
+public string Nombre {
+    get;
+    set;
+}
+
+[StringLength(255)]
+public string Descripcion {
+    get;
+    set;
+}
+
+// Relación con Producto
+public ICollection<Producto > Productos {
+    get;
+    set;
+}
+
+}
+}
+
+ChatGPT dijo:
+Perfecto 👏, tu modelo Categoria está muy bien definido — solo le falta una línea clave para que funcione con tu base de datos real.
+
+Entity Framework Core, por convención, intenta mapear la clase Categoria a una tabla pluralizada (Categorias), pero en tu base de datos la tabla se llama Categoria (singular).
+
+Por eso el error:
+
+Invalid object name 'Categorias'
+
+✅ Solución
+Solo necesitas agregar el atributo [Table("Categoria")] encima de la clase.
+Quedaría así:
+
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace InveDB.Modelos {
+    [Table("Categoria")] // 👈 Esto le dice a EF Core el nombre real de la tabla en SQL Server public class Categoria
+
+{
+    [Key] [Column("id_categoria")] // 👈 Opcional: si el nombre del campo en SQL está en minúscula public int IdCategoria
+
+{
+    get;
+    set;
+}
+
+[Required(ErrorMessage = "El nombre es obligatorio")]
+[StringLength(100)]
+[Column("nombre")] // 👈 Asegura que coincida con el campo de la base de datos
+public string Nombre {
+    get;
+    set;
+}
+
+[StringLength(255)]
+[Column("descripcion")]
+public string Descripcion {
+    get;
+    set;
+}
+
+// Relación con Producto
+public ICollection<Producto > Productos {
+    get;
+    set;
+}
+
+}
+}
+
+🧩 Qué hace cada atributo
+Atributo Propósito
+[Table("Categoria")] Le dice a EF que la tabla real en SQL Server se llama Categoria.
+[Column("nombre_columna")] (Opcional) Asegura que los nombres de las propiedades coincidan con los de la BD. Esto es útil si la base usa minúsculas o guiones bajos.
+🚀 Pasos siguientes
+Guarda el archivo Categoria.cs.
+
+Limpia y recompila la solución:
+
+Compilar → Limpiar solución
+
+Compilar → Compilar solución
+
+Ejecuta tu app e ingresa nuevamente a
+👉 https://localhost:xxxx/Categorias
+
+Ya no deberías recibir el error.
+
+¿Quieres que te indique cómo aplicar este mismo mapeo para las demás entidades (Producto, Proveedor, etc.) con las columnas correctas según tu script SQL?
+Así evitamos futuros errores similares.
+
+Dijiste:
+public class Inventario {
+    [Key] [ForeignKey("Producto")] public int IdProducto
+
+{
+    get;
+    set;
+}
+
+[Column(TypeName = "decimal(10,2)")]
+public decimal Cantidad {
+    get;
+    set;
+}
+
+public Producto Producto {
+    get;
+    set;
+}
+
+}
+
+public class Movimiento {
+    [Key] public int IdMovimiento
+
+{
+    get;
+    set;
+}
+
+[Required]
+[ForeignKey("Producto")]
+public int IdProducto {
+    get;
+    set;
+}
+
+[Required]
+[StringLength(1)]
+[RegularExpression("[ES]", ErrorMessage = "El tipo debe ser 'E' (Entrada) o 'S' (Salida)")]
+public string Tipo {
+    get;
+    set;
+}
+
+[Required]
+[Column(TypeName = "decimal(10,2)")]
+public decimal Cantidad {
+    get;
+    set;
+}
+
+public DateTime Fecha {
+    get;
+    set;
+}
+
+= DateTime.Now;
+
+[ForeignKey("Proveedor")]
+public int? IdProveedor {
+    get;
+    set;
+}
+
+[ForeignKey("Sucursal")]
+public int? IdSucursal {
+    get;
+    set;
+}
+
+public Producto Producto {
+    get;
+    set;
+}
+
+public Proveedor Proveedor {
+    get;
+    set;
+}
+
+public Sucursal Sucursal {
+    get;
+    set;
+}
+
+}
+
+public class Producto {
+    [Key] public int IdProducto
+
+{
+    get;
+    set;
+}
+
+[Required]
+[StringLength(100)]
+public string Nombre {
+    get;
+    set;
+}
+
+[StringLength(255)]
+public string Descripcion {
+    get;
+    set;
+}
+
+[Required]
+[StringLength(20)]
+public string UnidadMedida {
+    get;
+    set;
+}
+
+[Required]
+[ForeignKey("Categoria")]
+public int IdCategoria {
+    get;
+    set;
+}
+
+[Column(TypeName = "decimal(10,2)")]
+public decimal PrecioUnitario {
+    get;
+    set;
+}
+
+public Categoria Categoria {
+    get;
+    set;
+}
+
+}
+
+public class Proveedor {
+    [Key] public int IdProveedor
+
+{
+    get;
+    set;
+}
+
+[Required]
+[StringLength(100)]
+public string Nombre {
+    get;
+    set;
+}
+
+[StringLength(20)]
+public string Telefono {
+    get;
+    set;
+}
+
+[StringLength(255)]
+public string Direccion {
+    get;
+    set;
+}
+
+}
+
+public class Sucursal {
+    [Key] public int IdSucursal
+
+{
+    get;
+    set;
+}
+
+[Required]
+[StringLength(100)]
+public string Nombre {
+    get;
+    set;
+}
+
+[StringLength(255)]
+public string Direccion {
+    get;
+    set;
+}
+
+[StringLength(20)]
+public string Telefono {
+    get;
+    set;
+}
+
+}
+
+Damelas como deberian de quedar
+ChatGPT dijo:
+Excelente 👏 — tus clases están muy bien estructuradas, solo requieren ajustes de mapeo para coincidir exactamente con los nombres reales de tus tablas y columnas en SQL Server (según tu script SQL).
+
+En SQL Server creaste tablas singulares (Categoria, Producto, Proveedor, Sucursal, Inventario, Movimiento) y usas nombres de columnas como id_producto, id_categoria, etc.
+
+Por convención, Entity Framework usa nombres pluralizados y propiedades PascalCase, lo que causa errores como:
+
+Invalid object name 'Categorias'
+
+Así que agregaremos atributos [Table] y [Column] para alinear todo con la BD.
+
+✅ Clases corregidas (versión final y funcional)
+🗂 Categoria.cs
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace InveDB.Modelos {
+    [Table("Categoria")] public class Categoria
+
+{
+    [Key] [Column("id_categoria")] public int IdCategoria
+
+{
+    get;
+    set;
+}
+
+[Required]
+[StringLength(100)]
+[Column("nombre")]
+public string Nombre {
+    get;
+    set;
+}
+
+[StringLength(255)]
+[Column("descripcion")]
+public string Descripcion {
+    get;
+    set;
+}
+
+public ICollection<Producto > Productos {
+    get;
+    set;
+}
+
+}
+}
+
+📦 Producto.cs
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace InveDB.Modelos {
+    [Table("Producto")] public class Producto
+
+{
+    [Key] [Column("id_producto")] public int IdProducto
+
+{
+    get;
+    set;
+}
+
+[Required]
+[StringLength(100)]
+[Column("nombre")]
+public string Nombre {
+    get;
+    set;
+}
+
+[StringLength(255)]
+[Column("descripcion")]
+public string Descripcion {
+    get;
+    set;
+}
+
+[Required]
+[StringLength(20)]
+[Column("unidad_medida")]
+public string UnidadMedida {
+    get;
+    set;
+}
+
+[Required]
+[Column("id_categoria")]
+public int IdCategoria {
+    get;
+    set;
+}
+
+[Column("precio_unitario", TypeName = "decimal(10,2)")]
+public decimal PrecioUnitario {
+    get;
+    set;
+}
+
+[ForeignKey("IdCategoria")]
+public Categoria Categoria {
+    get;
+    set;
+}
+
+public ICollection<Inventario > Inventarios {
+    get;
+    set;
+}
+
+public ICollection<Movimiento > Movimientos {
+    get;
+    set;
+}
+
+}
+}
+
+🏬 Proveedor.cs
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace InveDB.Modelos {
+    [Table("Proveedor")] public class Proveedor
+
+{
+    [Key] [Column("id_proveedor")] public int IdProveedor
+
+{
+    get;
+    set;
+}
+
+[Required]
+[StringLength(100)]
+[Column("nombre")]
+public string Nombre {
+    get;
+    set;
+}
+
+[StringLength(20)]
+[Column("telefono")]
+public string Telefono {
+    get;
+    set;
+}
+
+[StringLength(255)]
+[Column("direccion")]
+public string Direccion {
+    get;
+    set;
+}
+
+public ICollection<Movimiento > Movimientos {
+    get;
+    set;
+}
+
+}
+}
+
+🏢 Sucursal.cs
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace InveDB.Modelos {
+    [Table("Sucursal")] public class Sucursal
+
+{
+    [Key] [Column("id_sucursal")] public int IdSucursal
+
+{
+    get;
+    set;
+}
+
+[Required]
+[StringLength(100)]
+[Column("nombre")]
+public string Nombre {
+    get;
+    set;
+}
+
+[StringLength(255)]
+[Column("direccion")]
+public string Direccion {
+    get;
+    set;
+}
+
+[StringLength(20)]
+[Column("telefono")]
+public string Telefono {
+    get;
+    set;
+}
+
+public ICollection<Movimiento > Movimientos {
+    get;
+    set;
+}
+
+}
+}
+
+📊 Inventario.cs
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace InveDB.Modelos {
+    [Table("Inventario")] public class Inventario
+
+{
+    [Key] [Column("id_producto")] [ForeignKey("Producto")] public int IdProducto
+
+{
+    get;
+    set;
+}
+
+[Column("cantidad", TypeName = "decimal(10,2)")]
+public decimal Cantidad {
+    get;
+    set;
+}
+
+public Producto Producto {
+    get;
+    set;
+}
+
+}
+}
+
+🔁 Movimiento.cs
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace InveDB.Modelos {
+    [Table("Movimiento")] public class Movimiento
+
+{
+    [Key] [Column("id_movimiento")] public int IdMovimiento
+
+{
+    get;
+    set;
+}
+
+[Required]
+[Column("id_producto")]
+public int IdProducto {
+    get;
+    set;
+}
+
+[Required]
+[StringLength(1)]
+[Column("tipo")]
+[RegularExpression("[ES]", ErrorMessage = "El tipo debe ser 'E' (Entrada) o 'S' (Salida)")]
+public string Tipo {
+    get;
+    set;
+}
+
+[Required]
+[Column("cantidad", TypeName = "decimal(10,2)")]
+public decimal Cantidad {
+    get;
+    set;
+}
+
+[Column("fecha")]
+public DateTime Fecha {
+    get;
+    set;
+}
+
+= DateTime.Now;
+
+[Column("id_proveedor")]
+public int? IdProveedor {
+    get;
+    set;
+}
+
+[Column("id_sucursal")]
+public int? IdSucursal {
+    get;
+    set;
+}
+
+[ForeignKey("IdProducto")]
+public Producto Producto {
+    get;
+    set;
+}
+
+[ForeignKey("IdProveedor")]
+public Proveedor Proveedor {
+    get;
+    set;
+}
+
+[ForeignKey("IdSucursal")]
+public Sucursal Sucursal {
+    get;
+    set;
+}
+
+}
+}
+
+🔧 Recomendación final
+Después de actualizar las clases, ejecuta en Package Manager Console:
+
+dotnet ef migrations add AjusteTablas
+dotnet ef database update
+(solo si estás generando el esquema desde EF; si la BD ya existe, no ejecutes esto)
+
+Si ya tienes la BD creada manualmente, solo recompila el proyecto — EF ya sabrá que las tablas se llaman igual que en tu SQL Server.
+
+¿Quieres que te prepare también el DbContext (AppDbContext.cs) configurado con todos estos modelos y sus relaciones?
+Así conectamos todo correctamente al backend.
+
+Dijiste:
+Como uso el programa
+ChatGPT dijo:
+Perfecto 🔥 — ya tienes casi todo listo.
+Ahora te explico claramente cómo usar y ejecutar tu proyecto InveDB paso a paso, dependiendo de si ya tienes la base de datos creada (como mencionaste) o no.
+
+🧭 1️⃣ Confirmar que tu base de datos ya existe
+Tú ya creaste esta BD:
+
+CREATE DATABASE AlmacenPTest;
+Entonces asegúrate de que en tu SQL Server (por ejemplo, usando SQL Server Management Studio o Azure Data Studio) existan las tablas:
+
+Categoria
+
+Producto
+
+Proveedor
+
+Sucursal
+
+Inventario
+
+Movimiento
+
+👉 Si las creaste tú manualmente, no necesitas usar EF Migrations.
+
+⚙️ 2️⃣ Revisar la conexión a SQL Server
+En tu archivo appsettings.json tienes:
+
+"ConnectionStrings": {
+    "DefaultConnection": "Server=MAINPC\\REALDB;Database=AlmacenPTest;User Id=sa;Password=FilianEnjoyer;Trusted_Connection=False;MultipleActiveResultSets=true;TrustServerCertificate=True;"
+}
+
+👉 Pero en tu Program.cs estás buscando otra cadena llamada "ConexionSQL":
+
+options.UseSqlServer(builder.Configuration.GetConnectionString("ConexionSQL"));
+✅ Corrígelo así:
+Cambia "ConexionSQL" → "DefaultConnection", para que coincidan.
+
+Tu Program.cs debe quedar así:
+
+using InveDB.Datos;
+using Microsoft.EntityFrameworkCore;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Registrar el contexto con la cadena de conexión correcta
+builder.Services.AddDbContext<ContextoAlmacen > (options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddControllersWithViews();
+builder.Services.AddRazorPages();
+
+var app = builder.Build();
+
+if (!app.Environment.IsDevelopment()) {
+    app .UseExceptionHandler("/Home/Error");
+    app .UseHsts();
+}
+
+app.UseHttpsRedirection();
+app.UseStaticFiles();
+
+app.UseRouting();
+app.UseAuthorization();
+
+app.MapRazorPages();
+
+app.MapControllerRoute( name: "default", pattern: "{controller=Inicio}/{action=Index}/{id?}");
+
+app.Run();
+🧩 3️⃣ Asegúrate de tener el contexto y modelos bien configurados
+Tu clase ContextoAlmacen.cs ya debe tener esto:
+
+using Microsoft.EntityFrameworkCore;
+using InveDB.Modelos;
+
+namespace InveDB.Datos {
+    public class ContextoAlmacen : DbContext
+
+{
+    public ContextoAlmacen(DbContextOptions<ContextoAlmacen> options) : base(options)
+
+{
+}
+
+public DbSet<Categoria > Categorias {
+    get;
+    set;
+}
+
+public DbSet<Producto > Productos {
+    get;
+    set;
+}
+
+public DbSet<Proveedor > Proveedores {
+    get;
+    set;
+}
+
+public DbSet<Sucursal > Sucursales {
+    get;
+    set;
+}
+
+public DbSet<Inventario > Inventarios {
+    get;
+    set;
+}
+
+public DbSet<Movimiento > Movimientos {
+    get;
+    set;
+}
+
+}
+}
+
+🧠 EF Core ignorará el plural “Categorias” y usará el nombre definido en [Table("Categoria")] de tus modelos, así que no te preocupes por eso.
+
+🖥️ 4️⃣ Ejecutar el proyecto
+Si usas Visual Studio:
+Abre la solución .sln.
+
+Asegúrate de que InveDB sea el proyecto de inicio.
+
+Presiona Ctrl + F5 o "Iniciar sin depuración".
+
+Se abrirá el navegador con una URL como:
+
+https://localhost:xxxx/
+Desde ahí puedes ir, por ejemplo:
+
+/Categorias
+
+/Productos
+
+/Proveedores
+
+/Sucursales
+
+Si usas Visual Studio Code:
+Abre la carpeta del proyecto.
+
+Abre una terminal y ejecuta:
+
+dotnet run
+Espera a que aparezca un mensaje similar a:
+
+Now listening on: https://localhost:7040
+Abre ese enlace en tu navegador.
+
+🧪 5️⃣ Probar el controlador de Categorías
+Si tienes un CategoriasController (como tu error mostraba), entonces visita:
+
+https://localhost:7040/Categorias
+Deberías ver una lista vacía o los registros de tu tabla Categoria.
+
+Si no hay vista, puedes crear una fácilmente con scaffolding (generación automática) — puedo ayudarte con eso también si quieres un CRUD completo (crear, editar, eliminar, listar) para tus tablas.
+
+🚨 Si vuelve a salir el error
+SqlException: Invalid object name 'Categorias'
+
+Entonces significa que las tablas no se llaman igual que las del modelo.
+
+✅ Solución:
+
+Asegúrate de que tu modelo tiene [Table("Categoria")] exactamente como en SQL Server.
+
+Asegúrate de estar en la base AlmacenPTest.
+
+Reinicia el proyecto después de recompilar.
+
+¿Quieres que te guíe ahora a generar automáticamente las vistas CRUD (crear, editar, eliminar, listar) para Categoria y los demás modelos con scaffolding?
+Así ya tendrías el backend y frontend básico funcionando.
+
+Dijiste:
+si
+ChatGPT dijo:
+Perfecto 😎
+Entonces vamos a generar automáticamente los controladores y vistas CRUD (crear, editar, eliminar, listar) para tus entidades usando scaffolding en tu proyecto InveDB.
+
+🧩 1️⃣ Requisitos previos (verifica esto primero)
+Antes de ejecutar los comandos, asegúrate de tener:
+
+✅ Visual Studio 2022 (o VS Code con SDK 8.0+)
+✅ Tu proyecto InveDB ya compila sin errores
+✅ En tu .csproj tienes MVC habilitado (lo normal si lo creaste como WebApp o MVC)
+✅ Y tienes instalado el paquete de herramientas para scaffolding:
+
+Abre Package Manager Console (PMC) (en Visual Studio:
+🧭 Ver → Otras ventanas → Consola del Administrador de paquetes) y ejecuta:
+
+dotnet tool install --global dotnet-aspnet-codegenerator
+Luego instala los paquetes necesarios dentro del proyecto (solo una vez):
+
+dotnet add package Microsoft.VisualStudio.Web.CodeGeneration.Design
+dotnet add package Microsoft.EntityFrameworkCore.SqlServer
+dotnet add package Microsoft.EntityFrameworkCore.Tools
+⚙️ 2️⃣ Generar CRUD para Categoría
+En la Consola del Administrador de Paquetes (PMC) o en terminal, ejecuta:
+
+dotnet aspnet-codegenerator controller \
+-name CategoriasController \
+-m Categoria \
+-dc InveDB.Datos.ContextoAlmacen \
+--relativeFolderPath Controles \
+--useDefaultLayout \
+--referenceScriptLibraries
+🔹 Esto genera:
+
+Controles/CategoriasController.cs
+
+Vistas/Categorias/ con archivos:
+
+Index.cshtml
+
+Create.cshtml
+
+Edit.cshtml
+
+Details.cshtml
+
+Delete.cshtml
+
+🧱 3️⃣ Generar los demás CRUD automáticamente
+Repite lo mismo cambiando el nombre del modelo:
+
+dotnet aspnet-codegenerator controller -name ProductosController -m Producto -dc InveDB.Datos.ContextoAlmacen --relativeFolderPath Controles --useDefaultLayout --referenceScriptLibraries
+dotnet aspnet-codegenerator controller -name ProveedoresController -m Proveedor -dc InveDB.Datos.ContextoAlmacen --relativeFolderPath Controles --useDefaultLayout --referenceScriptLibraries
+dotnet aspnet-codegenerator controller -name SucursalesController -m Sucursal -dc InveDB.Datos.ContextoAlmacen --relativeFolderPath Controles --useDefaultLayout --referenceScriptLibraries
+dotnet aspnet-codegenerator controller -name InventariosController -m Inventario -dc InveDB.Datos.ContextoAlmacen --relativeFolderPath Controles --useDefaultLayout --referenceScriptLibraries
+dotnet aspnet-codegenerator controller -name MovimientosController -m Movimiento -dc InveDB.Datos.ContextoAlmacen --relativeFolderPath Controles --useDefaultLayout --referenceScriptLibraries
+📂 Esto te dejará todo organizado así:
+
+InveDB/
+┣ Controles/
+┃ ┣ CategoriasController.cs
+┃ ┣ ProductosController.cs
+┃ ┣ ProveedoresController.cs
+┃ ┣ SucursalesController.cs
+┃ ┣ InventariosController.cs
+┃ ┗ MovimientosController.cs
+┣ Vistas/
+┃ ┣ Categorias/
+┃ ┣ Productos/
+┃ ┣ Proveedores/
+┃ ┣ Sucursales/
+┃ ┣ Inventarios/
+┃ ┗ Movimientos/
+🧠 4️⃣ Probar en el navegador
+Luego de ejecutar los comandos y compilar sin errores:
+
+Ejecuta el proyecto (Ctrl + F5) y abre estas rutas:
+
+/Categorias
+
+/Productos
+
+/Proveedores
+
+/Sucursales
+
+/Inventarios
+
+/Movimientos
+
+Cada una tendrá su CRUD listo 🧩
+
+⚠️ Si ves errores como:
+“Invalid object name 'Categorias'”
+
+Es porque los nombres de tus tablas en SQL no coinciden con las clases.
+Solución rápida: agrega arriba de cada modelo el atributo [Table("NombreRealDeLaTabla")].
+
+Ejemplo:
+
+[Table("Categoria")]
+public class Categoria {
+    ...
+}
+
+¿Quieres que te prepare exactamente los modelos corregidos con [Table] y relaciones configuradas para que el scaffolding funcione sin errores?
+Así copias y pegas directo antes de generar los CRUD.
+
+Dijiste:
+PM > dotnet aspnet-codegenerator controller \
+dotnet : Scaffolding failed.
+En línea: 1 Carácter: 1 + dotnet aspnet-codegenerator controller \ + ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
++ CategoryInfo : NotSpecified: (Scaffolding failed.:String) [], RemoteException + FullyQualifiedErrorId : NativeCommandError
+
+Could not find project file in C:\Users\alexi\source\repos\InveDB
+To see more information, enable tracing by setting environment variable 'codegen_trace' = 1.
+RunTime 00:00:00.04
+PM > -name CategoriasController \
+-name : El término '-name' no se reconoce como nombre de un cmdlet, función, archivo de script o programa ejecutable. Compruebe si escribió correctamente el nombre o, si incluyó una ruta de acceso, compruebe que dicha ruta es correcta e inténtelo de nuevo.
+En línea: 1 Carácter: 3 + -name CategoriasController \ + ~ ~ ~ ~ ~
++ CategoryInfo : ObjectNotFound: (-name:String) [], CommandNotFoundException + FullyQualifiedErrorId : CommandNotFoundException
+
+PM > -m Categoria \
+-m : El término '-m' no se reconoce como nombre de un cmdlet, función, archivo de script o programa ejecutable. Compruebe si escribió correctamente el nombre o, si incluyó una ruta de acceso, compruebe que dicha ruta es correcta e inténtelo de nuevo.
+En línea: 1 Carácter: 3 + -m Categoria \ + ~ ~
++ CategoryInfo : ObjectNotFound: (-m:String) [], CommandNotFoundException + FullyQualifiedErrorId : CommandNotFoundException
+
+PM > -dc InveDB.Datos.ContextoAlmacen \
+-dc : El término '-dc' no se reconoce como nombre de un cmdlet, función, archivo de script o programa ejecutable. Compruebe si escribió correctamente el nombre o, si incluyó una ruta de acceso, compruebe que dicha ruta es correcta e inténtelo de nuevo.
+En línea: 1 Carácter: 3 + -dc InveDB.Datos.ContextoAlmacen \ + ~ ~ ~
++ CategoryInfo : ObjectNotFound: (-dc:String) [], CommandNotFoundException + FullyQualifiedErrorId : CommandNotFoundException
+
+PM > --relativeFolderPath Controles \
+En línea: 1 Carácter: 5 + --relativeFolderPath Controles \ + ~
+Falta una expresión después del operador unario '--'.
+
+En línea: 1 Carácter: 5 + --relativeFolderPath Controles \ + ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
+Token 'relativeFolderPath' inesperado en la expresión o la instrucción.
+PM > --useDefaultLayout \
+En línea: 1 Carácter: 5 + --useDefaultLayout \ + ~
+Falta una expresión después del operador unario '--'.
+
+En línea: 1 Carácter: 5 + --useDefaultLayout \ + ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
+Token 'useDefaultLayout' inesperado en la expresión o la instrucción.
+PM > --referenceScriptLibraries
+En línea: 1 Carácter: 5 + --referenceScriptLibraries + ~
+Falta una expresión después del operador unario '--'.
+
+En línea: 1 Carácter: 5 + --referenceScriptLibraries + ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
+Token 'referenceScriptLibraries' inesperado en la expresión o la instrucción.
+ChatGPT dijo:
+Excelente que lo intentaras 👍 — el problema aquí es cómo se está ejecutando el comando y dónde.
+Te explico rápido y luego te doy el comando exacto que sí te va a funcionar paso a paso.
+
+💡 Qué pasó
+Estás ejecutando los comandos en la “Consola del Administrador de Paquetes (PM)” de Visual Studio,
+pero el comando dotnet aspnet-codegenerator no se ejecuta ahí, sino en una terminal del sistema (PowerShell o CMD).
+
+💬 En la consola “PM > ” solo funcionan comandos de NuGet (como Install-Package),
+pero no comandos de dotnet.
+
+✅ Solución paso a paso
+🔹 1️⃣ Abre una terminal normal
+En Visual Studio:
+
+Ve al menú Ver → Terminal
+(o presiona Ctrl + ñ o Ctrl + )
+
+O usa una ventana de PowerShell / CMD y navega a la carpeta del proyecto.
+
+Ejemplo:
+
+cd "C:\Users\alexi\source\repos\InveDB"
+Para confirmar que estás en el lugar correcto, debe existir el archivo:
+
+InveDB.csproj
+🔹 2️⃣ Ejecuta el comando completo (todo en una sola línea)
+Copia y pega este comando (todo junto, sin \ al final de cada línea):
+
+dotnet aspnet-codegenerator controller -name CategoriasController -m Categoria -dc InveDB.Datos.ContextoAlmacen --relativeFolderPath Controles --useDefaultLayout --referenceScriptLibraries
+👉 Importante:
+
+No uses \ (eso se usa en Linux/macOS, no en Windows PowerShell)
+
+Debes estar dentro del directorio donde está el .csproj
+
+🔹 3️⃣ Verifica que se creó correctamente
+Debe generar:
+
+Controles/
+┗ CategoriasController.cs
+Vistas/
+┗ Categorias/
+┣ Create.cshtml
+┣ Delete.cshtml
+┣ Details.cshtml
+┣ Edit.cshtml
+┗ Index.cshtml
+🔹 4️⃣ Ejecuta el proyecto
+En Visual Studio:
+
+Pulsa Ctrl + F5
+
+Y visita:
+👉 https://localhost:xxxx/Categorias
+
+Deberías ver la tabla de categorías y los botones de CRUD.
+
+¿Quieres que te prepare también los comandos exactos para los demás controladores (Productos, Proveedores, etc.) listos para copiar y pegar igual en la terminal?
+
+Dijiste:
+Es correcto este codigo
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
+using InveDB.Datos;
+using InveDB.Modelos;
+
+namespace InveDB.Controles {
+    public class CategoriasController : Controller
+
+{
+    private readonly ContextoAlmacen _context;
+    public CategoriasController(ContextoAlmacen context)
+
+{
+    _context = context;
+}
+
+// GET: Categorias
+public async Task<IActionResult > Index() {
+    return View(await _context.Categorias.ToListAsync());
+}
+
+// GET: Categorias/Details/5
+public async Task<IActionResult > Details(int? id) {
+    if (id == null)
+
+{
+    return NotFound();
+}
+
+var categoria = await _context.Categorias
+.FirstOrDefaultAsync(m => m.IdCategoria == id);
+if (categoria == null) {
+    return NotFound();
+}
+
+return View(categoria);
+}
+
+// GET: Categorias/Create
+public IActionResult Create() {
+    return View();
+}
+
+// POST: Categorias/Create
+// To protect from overposting attacks, enable the specific properties you want to bind to.
+// For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
+[HttpPost]
+[ValidateAntiForgeryToken]
+public async Task<IActionResult > Create([Bind("IdCategoria,Nombre,Descripcion")] Categoria categoria) {
+    if (ModelState.IsValid)
+
+{
+    _context .Add(categoria);
+    await _context.SaveChangesAsync();
+    return RedirectToAction(nameof(Index));
+}
+
+return View(categoria);
+}
+
+// GET: Categorias/Edit/5
+public async Task<IActionResult > Edit(int? id) {
+    if (id == null)
+
+{
+    return NotFound();
+}
+
+var categoria = await _context.Categorias.FindAsync(id);
+if (categoria == null) {
+    return NotFound();
+}
+
+return View(categoria);
+}
+
+// POST: Categorias/Edit/5
+// To protect from overposting attacks, enable the specific properties you want to bind to.
+// For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
+[HttpPost]
+[ValidateAntiForgeryToken]
+public async Task<IActionResult > Edit(int id, [Bind("IdCategoria,Nombre,Descripcion")] Categoria categoria) {
+    if (id != categoria.IdCategoria)
+
+{
+    return NotFound();
+}
+
+if (ModelState.IsValid) {
+    try
+
+{
+    _context .Update(categoria);
+    await _context.SaveChangesAsync();
+}
+
+catch (DbUpdateConcurrencyException) {
+    if (!CategoriaExists(categoria.IdCategoria))
+
+{
+    return NotFound();
+}
+
+else {
+    throw;
+}
+
+}
+return RedirectToAction(nameof(Index));
+}
+return View(categoria);
+}
+
+// GET: Categorias/Delete/5
+public async Task<IActionResult > Delete(int? id) {
+    if (id == null)
+
+{
+    return NotFound();
+}
+
+var categoria = await _context.Categorias
+.FirstOrDefaultAsync(m => m.IdCategoria == id);
+if (categoria == null) {
+    return NotFound();
+}
+
+return View(categoria);
+}
+
+// POST: Categorias/Delete/5
+[HttpPost, ActionName("Delete")]
+[ValidateAntiForgeryToken]
+public async Task<IActionResult > DeleteConfirmed(int id) {
+    var categoria = await _context.Categorias.FindAsync(id);
+    if (categoria != null)
+
+{
+    _context .Categorias.Remove(categoria);
+}
+
+await _context.SaveChangesAsync();
+return RedirectToAction(nameof(Index));
+}
+
+private bool CategoriaExists(int id) {
+    return _context.Categorias.Any(e => e.IdCategoria == id);
+}
+
+}
+}
+
+ChatGPT dijo:
+✅ Sí, tu código del CategoriasController está correcto y perfectamente funcional para un CRUD básico en ASP.NET Core MVC con Entity Framework.
+
+De hecho, es exactamente el tipo de controlador que genera automáticamente el Scaffolding Tool de .NET cuando haces el CRUD desde el modelo Categoria.
+
+💡 Te explico brevemente cada parte para que sepas cómo usarlo:
+Sección Qué hace
+Index() Muestra la lista de todas las categorías (usa View(await _context.Categorias.ToListAsync()))
+Details(int? id) Muestra los detalles de una categoría específica
+Create() (GET) Muestra el formulario para crear una nueva categoría
+Create() (POST) Guarda la nueva categoría en la base de datos
+Edit() (GET y POST) Permite editar una categoría existente
+Delete() (GET y POST) Permite eliminar una categoría
+CategoriaExists() Método auxiliar para verificar si una categoría existe antes de editar o borrar
+⚙️ Cosas a confirmar en tu proyecto para que funcione sin errores:
+El modelo Categoria debe coincidir con tu tabla en SQL Server
+Si la tabla se llama Categoria (no Categorias), añade este atributo arriba del modelo:
+
+[Table("Categoria")]
+public class Categoria {
+    ...
+}
+
+Esto evita el error: “Invalid object name 'Categorias'”.
+
+Tu contexto debe tener la propiedad:
+
+public DbSet<Categoria > Categorias {
+    get;
+    set;
+}
+
+✅ Ya lo tienes en ContextoAlmacen.
+
+Tu vista Index.cshtml debe existir en: /Views/ Categorias/Index.cshtml
+(y las demás vistas del CRUD en la misma carpeta).
+
+Tu conexión en appsettings.json debe estar correcta:
+
+"ConnectionStrings": {
+    "ConexionSQL": "Server=MAINPC\\REALDB;Database=AlmacenPTest;User Id=sa;Password=FilianEnjoyer;Trusted_Connection=False;TrustServerCertificate=True;"
+}
+
+y en Program.cs:
+
+options.UseSqlServer(builder.Configuration.GetConnectionString("ConexionSQL"))
+🧭 Luego para probarlo:
+Ejecuta el proyecto con Ctrl + F5
+y entra en la ruta:
+
+https://localhost:xxxx/Categorias
+Deberías ver el listado de categorías con botones de:
+
+🟢 Crear nuevo
+
+✏️ Editar
+
+🔍 Detalles
+
+❌ Eliminar
+
+¿Quieres que te ayude ahora a generar el controlador y vistas para Productos (con el dropdown de categorías incluido)?
+Ese tiene una relación foránea, así que puedo darte el código ya listo con el SelectList funcional.
+
+Dijiste:
+Cuando abro la pagina solo me aparece este texto
+Index
+Create New
+
+Nombre Descripcion
+ChatGPT dijo:
+Perfecto 👍 eso significa que tu controlador está funcionando correctamente, pero lo que estás viendo es el contenido por defecto de la vista Index.cshtml del CRUD de Categoria.
+
+Lo que pasa es que el scaffolding genera una vista básica sin estilos ni registros, y si tu tabla Categoria está vacía, verás solo el encabezado:
+
+Index
+Create New
+Nombre Descripcion
+✅ Para solucionarlo, revisemos los posibles casos:
+🧩 Caso 1: Tu base de datos está vacía
+Simplemente no tienes categorías guardadas todavía.
+
+👉 Solución:
+
+Entra a
+
+https://localhost:xxxx/Categorias/Create
+Llena el formulario (por ejemplo):
+
+Nombre: Electrónica
+
+Descripción: Productos tecnológicos
+
+Da clic en Crear.
+
+🔹 Luego regresa a /Categorias y deberías ver tu nueva categoría listada.
+
+🧩 Caso 2: Tu base de datos tiene datos, pero no se muestran
+Entonces el problema puede ser que el DbContext esté apuntando a otra base de datos.
+
+👉 Verifica esto:
+
+Abre tu archivo appsettings.json
+
+Busca el bloque:
+
+"ConnectionStrings": {
+    "ConexionSQL": "Server=MAINPC\\REALDB;Database=AlmacenPTest;User Id=sa;Password=FilianEnjoyer;Trusted_Connection=False;TrustServerCertificate=True;"
+}
+
+Asegúrate de que coincide exactamente con el nombre de la base de datos que tiene datos (AlmacenPTest).
+
+Reinicia el proyecto.
+
+🧩 Caso 3: Quieres mejorar la vista (estética)
+El scaffolding deja las vistas en texto plano.
+Puedes editarlas fácilmente para que se vean mejor.
+
+Abre el archivo:
+
+Views/Categorias/Index.cshtml
+Y reemplaza su contenido por este diseño mejorado (en español y con estilo Bootstrap):
+
+@model IEnumerable<InveDB.Modelos.Categoria >
+
+@ {
+    ViewData ["Title"] = "Categorías";
+}
+
+<h2 class="mb-4" > Lista de Categorías</h2 >
+
+<p >
+<a asp-action="Create" class="btn btn-success" > ➕ Nueva Categoría</a >
+</p >
+
+@if (!Model.Any()) {
+    <div class="alert alert-info">No hay categorías registradas.</div>
+}
+
+else {
+    <table class="table table-striped table-bordered"> <thead class="table-dark"> <tr> <th>Nombre</th> <th>Descripción</th> <th>Acciones</th> </tr> </thead> <tbody> @foreach (var item in Model)
+
+{
+    <tr> <td>@item.Nombre</td> <td>@item.Descripcion</td> <td> <a asp-action="Edit" asp-route-id="@item.IdCategoria" class="btn btn-warning btn-sm">✏️ Editar</a> <a asp-action="Details" asp-route-id="@item.IdCategoria" class="btn btn-info btn-sm">🔍 Detalles</a> <a asp-action="Delete" asp-route-id="@item.IdCategoria" class="btn btn-danger btn-sm">🗑 Eliminar</a> </td> </tr>
+}
+
+</tbody >
+</table >
+}
+
+¿Quieres que te dé también las vistas personalizadas (Create, Edit, Details, Delete) en español con formato y botones bonitos para que todo el CRUD de Categorías se vea profesional?
+
+Dijiste:
+Ya que esta todo el backend creado quiero empezar a hacer el frontend y las interacciones del usuario
+ChatGPT dijo:
+Excelente 👏 —ya que tienes todo el backend funcional (modelos, contexto, controlador y base de datos), ahora sí podemos pasar a la parte del frontend e interacciones del usuario.
+
+Antes de avanzar, aclárame una cosa para hacerlo bien desde el principio 👇
+
+🔍 Necesito saber:
+¿A qué te refieres exactamente con “frontend”?
+Hay dos caminos posibles, y necesito saber cuál quieres seguir:
+
+💻 Frontend con Razor Views (dentro del mismo proyecto MVC)
+
+Es el enfoque tradicional de ASP.NET MVC.
+
+Usas archivos .cshtml (como tus vistas de Categoría) con HTML, Bootstrap y código Razor.
+
+Todo el backend y frontend están juntos (ideal si no usarás JavaScript avanzado ni SPA).
+
+Ejemplo: /Categorias/ Index, /Productos/Create, etc.
+
+🌐 Frontend separado con framework moderno (React, Angular, Vue, etc.)
+
+Tu backend quedaría como una API (por ejemplo /api/categorias).
+
+El frontend sería una aplicación separada que consume la API.
+
+Ideal si quieres un diseño interactivo, tipo dashboard o app moderna.
+
+Si eliges Opción 1 (Razor Views) puedo guiarte paso a paso para:
+
+Diseñar el layout principal del sitio (_Layout.cshtml)
+
+Crear un menú de navegación (categorías, productos, inventario, etc.)
+
+Agregar Bootstrap y estilos modernos
+
+Conectar vistas CRUD con diseño más atractivo e intuitivo
+
+Si eliges Opción 2 (SPA con React o similar) te ayudo a crear una API REST en ASP.NET Core y luego el frontend aparte (con fetch o axios).
+
+👉 Entonces, ¿cuál de las dos opciones quieres usar para tu frontend:
+1️⃣ Razor Views o 2️⃣ Framework moderno (React, Angular, etc.)?
+
+Dijiste:
+con razor views
+ChatGPT dijo:
+Perfecto 🎯 — usaremos Razor Views (ASP.NET MVC) para construir el frontend completo de tu sistema InveDB, con diseño moderno, navegación y vistas limpias.
+Así tendrás un sistema web funcional con CRUD, menús y panel visualmente atractivo, todo dentro del mismo proyecto.
+
+🧭 Plan paso a paso (Frontend con Razor Views)
+🧩 1. Estructura general del sitio
+Crearemos una interfaz base donde todo el contenido se mostrará dentro de un layout compartido:
+
+Archivo: Views/Shared/_Layout.cshtml
+
+Este contendrá:
+
+Encabezado con logo y título “InveDB”
+
+Barra de navegación con enlaces a las secciones:
+
+Categorías
+
+Productos
+
+Proveedores
+
+Sucursales
+
+Movimientos
+
+Inventario
+
+Un <main > donde se renderiza cada vista (@RenderBody())
+
+🎨 2. Agregar Bootstrap para estilo
+ASP.NET MVC permite incluir fácilmente Bootstrap desde CDN.
+
+En _Layout.cshtml, incluiremos:
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" / >
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" > </script >
+Así todas tus vistas Razor heredan automáticamente el estilo.
+
+🧱 3. Crear o editar _Layout.cshtml
+Abre:
+📁 Views/Shared/_Layout.cshtml
+y reemplaza su contenido por esto 👇
+
+@ {
+    Layout = null;
+}
+
+<!DOCTYPE html >
+<html lang="es" >
+<head >
+<meta charset="utf-8" / >
+<meta name="viewport" content="width=device-width, initial-scale=1.0" / >
+<title > @ViewData["Title"] - InveDB</title >
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" / >
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" > </script >
+</head >
+<body >
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary" >
+<div class="container" >
+<a class="navbar-brand fw-bold" href="/" > InveDB</a >
+<button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#menu" aria-controls="menu" aria-expanded="false" aria-label="Toggle navigation" >
+<span class="navbar-toggler-icon" > </span >
+</button >
+<div class="collapse navbar-collapse" id="menu" >
+<ul class="navbar-nav ms-auto" >
+<li class="nav-item" > <a class="nav-link" asp-controller="Categorias" asp-action="Index" > Categorías</a > </li >
+<li class="nav-item" > <a class="nav-link" asp-controller="Productos" asp-action="Index" > Productos</a > </li >
+<li class="nav-item" > <a class="nav-link" asp-controller="Proveedores" asp-action="Index" > Proveedores</a > </li >
+<li class="nav-item" > <a class="nav-link" asp-controller="Sucursales" asp-action="Index" > Sucursales</a > </li >
+<li class="nav-item" > <a class="nav-link" asp-controller="Movimientos" asp-action="Index" > Movimientos</a > </li >
+<li class="nav-item" > <a class="nav-link" asp-controller="Inventarios" asp-action="Index" > Inventario</a > </li >
+</ul >
+</div >
+</div >
+</nav >
+
+<main class="container my-4" >
+@RenderBody()
+</main >
+
+<footer class="bg-light text-center text-muted py-3 mt-4" >
+<small > © @DateTime.Now.Year - InveDB. Sistema de gestión de inventario.</small >
+</footer >
+</body >
+</html >
+🧩 4. Asegurar que las vistas usen el layout
+Abre Views/_ViewStart.cshtml
+y confirma que diga:
+
+@ {
+    Layout = "_Layout";
+}
+
+Así todas las páginas Razor usarán automáticamente el diseño que acabamos de crear.
+
+✅ 5. Resultado esperado
+Cuando ejecutes el proyecto:
+
+Verás una barra azul superior con las secciones del sistema.
+
+En el centro aparecerá la vista actual (Index, Create, etc.).
+
+Todas las vistas compartirán el mismo estilo, sin repetir HTML.
+
+🚀 Próximo paso
+Ahora que ya tendremos el diseño base funcionando, podemos mejorar las vistas CRUD (por ejemplo, Categorias/Index.cshtml) para que muestren tablas Bootstrap, botones de acción bonitos, íconos y confirmaciones de borrado.
+
+¿Quieres que sigamos con eso (mejorar las vistas CRUD de Categorías) o prefieres que antes agreguemos el dashboard de inicio (panel general del sistema)?
+
+Dijiste:
+Ya tengo codigos HTML de paginas que quiero, primero te dare la vista del menu principal
+<!DOCTYPE html >
+<html lang="es" >
+<head >
+<meta charset="UTF-8" >
+<title > Inicio- Pizzería</title >
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" >
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" > </script >
+<style >
+body {
+    background: #f4f6f9;
+}
+
+.sidebar {
+    background: #2c3e50;
+    height: 100vh;
+    color: white;
+    padding-top: 20px;
+    position: fixed;
+    width: 230px;
+}
+
+    .sidebar a {
+        color: white;
+        text-decoration: none;
+        display: block;
+        padding: 10px 20px;
+    }
+
+        .sidebar a:hover, .sidebar a.active {
+            background: #1abc9c;
+        }
+
+.content {
+    margin-left: 220px;
+    padding: 20px;
+}
+
+.card-stats {
+    text-align: center;
+    padding: 20px;
+}
+
+    .card-stats h2 {
+        margin: 0;
+        font-size: 2rem;
+    }
+
+</style >
+</head >
+<body >
+
+<div class="sidebar" >
+<h4 class="text-center" > Pizza Planet 🪐</h4 >
+<a href="#" class="active" > Inicio</a >
+<a href="#" > Inventario</a >
+<a href="#" > Gestionar Tablas</a >
+<a href="#" > Registrar Entradas/Salidas </a >
+</div >
+
+<div class="content" >
+<h3 class="mb-4" > InveDB - Inicio</h3 >
+
+
+<div class="row mb-4" > <!-- tarjetas de los resumenes -->
+<div class="col-md-3" >
+<div class="card card-stats bg-success text-white" >
+<h2 > 3</h2 >
+<p > Usuarios</p >
+</div >
+</div >
+<div class="col-md-3" >
+<div class="card card-stats bg-primary text-white" >
+<h2 > 8</h2 >
+<p > Productos</p >
+</div >
+</div >
+<div class="col-md-3" >
+<div class="card card-stats bg-warning text-white" >
+<h2 > 15</h2 >
+<p > Movimientos</p >
+</div >
+</div >
+</div >
+
+
+<div class="row" > <!-- tarjeta de los productos mas usados -->
+<div class="col-md-6" >
+<div class="card" >
+<div class="card-header bg-dark text-white" > Productos más usados</div >
+<div class="card-body" >
+<table class="table table-sm" >
+<thead >
+<tr >
+<th > Producto</th >
+<th > Total usado</th >
+<th > Cantidad</th >
+</tr >
+</thead >
+<tbody >
+<tr >
+<td > Pizza Pepperoni</td >
+<td > 300</td >
+<td > 10</td >
+</tr >
+<tr >
+<td > Pizza Hawaiana</td >
+<td > 240</td >
+<td > 8</td >
+</tr >
+<tr >
+<td > Pizza Vegetariana</td >
+<td > 150</td >
+<td > 5</td >
+</tr >
+</tbody >
+</table >
+</div >
+</div >
+</div >
+
+
+<div class="col-md-6" > <!-- tarjeta de los ultimos movimientos -->
+<div class="card" >
+<div class="card-header bg-dark text-white" > Últimos movimientos</div >
+<div class="card-body" >
+<table class="table table-sm" >
+<thead >
+<tr >
+<th > #</th >
+<th > Producto</th >
+<th > Fecha</th >
+<th > Cantidad</th >
+</tr >
+</thead >
+<tbody >
+<tr >
+<td > 1</td >
+<td > Pizza Pepperoni</td >
+<td > 2025-10-01</td >
+<td > 3</td >
+</tr >
+<tr >
+<td > 2</td >
+<td > Pizza Hawaiana</td >
+<td > 2025-10-01</td >
+<td > 2</td >
+</tr >
+<tr >
+<td > 3</td >
+<td > Pizza Vegetariana</td >
+<td > 2025-09-30</td >
+<td > 1</td >
+</tr >
+</tbody >
+</table >
+</div >
+</div >
+</div >
+</div >
+</div >
+</body >
+</html >
+ChatGPT dijo:
+Perfecto ✅ Veo que ya tienes un diseño HTML listo para tu menú principal (Dashboard).
+Vamos a integrarlo correctamente dentro de tu proyecto ASP.NET MVC con Razor Views, para que sea tu vista de inicio real, con el mismo diseño pero funcionando dentro del flujo MVC (sin tener que abrir un HTML aparte).
+
+🔧 Objetivo
+Convertir ese HTML en una vista Razor (Inicio/Index.cshtml) y agregar un controlador (InicioController) que la renderice.
+
+🧩 Paso 1: Crear el controlador InicioController
+📁 En la carpeta Controllers (o Controles, si usas ese nombre), crea el archivo:
+InicioController.cs
+
+using Microsoft.AspNetCore.Mvc;
+
+namespace InveDB.Controles {
+    public class InicioController : Controller
+
+{
+    public IActionResult Index()
+
+{
+    return View();
+}
+
+}
+}
+
+Este será tu punto de entrada al sistema, y se usa como la página principal (ya lo configuramos así en tu Program.cs).
+
+🧱 Paso 2: Crear la vista Razor del dashboard
+📁 En Views/Inicio/, crea el archivo:
+Index.cshtml
+
+Pega tu HTML dentro del cuerpo Razor, pero sin repetir etiquetas <html >, <head > ni <body >, ya que el layout (_Layout.cshtml) las gestiona.
+
+Aquí te dejo la versión adaptada correctamente a Razor 👇
+
+@ {
+    ViewData ["Title"] = "Inicio";
+    Layout = "_Layout";
+    // Usa tu diseño base global
+}
+
+<style >
+body {
+    background: #f4f6f9;
+}
+
+.sidebar {
+    background: #2c3e50;
+    height: 100vh;
+    color: white;
+    padding-top: 20px;
+    position: fixed;
+    width: 230px;
+}
+
+    .sidebar a {
+        color: white;
+        text-decoration: none;
+        display: block;
+        padding: 10px 20px;
+    }
+
+        .sidebar a:hover,
+        .sidebar a.active {
+            background: #1abc9c;
+        }
+
+.content {
+    margin-left: 220px;
+    padding: 20px;
+}
+
+.card-stats {
+    text-align: center;
+    padding: 20px;
+}
+
+    .card-stats h2 {
+        margin: 0;
+        font-size: 2rem;
+    }
+
+</style >
+
+<div class="sidebar" >
+<h4 class="text-center" > Pizza Planet 🪐</h4 >
+<a href="#" class="active" > Inicio</a >
+<a asp-controller="Inventarios" asp-action="Index" > Inventario</a >
+<a asp-controller="Categorias" asp-action="Index" > Gestionar Tablas</a >
+<a asp-controller="Movimientos" asp-action="Index" > Registrar Entradas/Salidas</a >
+</div >
+
+<div class="content" >
+<h3 class="mb-4" > InveDB - Inicio</h3 >
+<!-- Tarjetas de resumen -->
+<div class="row mb-4" >
+<div class="col-md-3" >
+<div class="card card-stats bg-success text-white" >
+<h2 > 3</h2 >
+<p > Usuarios</p >
+</div >
+</div >
+<div class="col-md-3" >
+<div class="card card-stats bg-primary text-white" >
+<h2 > 8</h2 >
+<p > Productos</p >
+</div >
+</div >
+<div class="col-md-3" >
+<div class="card card-stats bg-warning text-white" >
+<h2 > 15</h2 >
+<p > Movimientos</p >
+</div >
+</div >
+</div >
+<!-- Productos más usados -->
+<div class="row" >
+<div class="col-md-6" >
+<div class="card" >
+<div class="card-header bg-dark text-white" > Productos más usados</div >
+<div class="card-body" >
+<table class="table table-sm" >
+<thead >
+<tr >
+<th > Producto</th >
+<th > Total usado</th >
+<th > Cantidad</th >
+</tr >
+</thead >
+<tbody >
+<tr >
+<td > Pizza Pepperoni</td >
+<td > 300</td >
+<td > 10</td >
+</tr >
+<tr >
+<td > Pizza Hawaiana</td >
+<td > 240</td >
+<td > 8</td >
+</tr >
+<tr >
+<td > Pizza Vegetariana</td >
+<td > 150</td >
+<td > 5</td >
+</tr >
+</tbody >
+</table >
+</div >
+</div >
+</div >
+<!-- Últimos movimientos -->
+<div class="col-md-6" >
+<div class="card" >
+<div class="card-header bg-dark text-white" > Últimos movimientos</div >
+<div class="card-body" >
+<table class="table table-sm" >
+<thead >
+<tr >
+<th > #</th >
+<th > Producto</th >
+<th > Fecha</th >
+<th > Cantidad</th >
+</tr >
+</thead >
+<tbody >
+<tr >
+<td > 1</td >
+<td > Pizza Pepperoni</td >
+<td > 2025-10-01</td >
+<td > 3</td >
+</tr >
+<tr >
+<td > 2</td >
+<td > Pizza Hawaiana</td >
+<td > 2025-10-01</td >
+<td > 2</td >
+</tr >
+<tr >
+<td > 3</td >
+<td > Pizza Vegetariana</td >
+<td > 2025-09-30</td >
+<td > 1</td >
+</tr >
+</tbody >
+</table >
+</div >
+</div >
+</div >
+</div >
+</div >
+🚀 Paso 3: Probar el inicio
+Ejecuta el proyecto, y navega a:
+👉 https://localhost:xxxx/Inicio/Index
+
+Deberías ver tu dashboard con sidebar y tarjetas perfectamente integrado dentro del sistema Razor.
+
+También puedes ajustar tu ruta por defecto en Program.cs para que abra esto directamente:
+
+app.MapControllerRoute( name: "default", pattern: "{controller=Inicio}/{action=Index}/{id?}");
+🔄 Próximos pasos
+Ahora podemos hacer que esos datos del dashboard (usuarios, productos, movimientos, etc.) se carguen dinámicamente desde tu base de datos con Entity Framework.
+
+¿Quieres que te ayude a conectar las tarjetas y tablas del dashboard para que muestren datos reales (por ejemplo, conteo de productos, últimos movimientos, etc.)?
+
+Dijiste:
+Quiero que se adapte al tamaño de la pantalla
+ChatGPT dijo:
+Perfecto 💪 quieres que tu vista principal (dashboard) sea totalmente responsiva, es decir, que se adapte automáticamente al tamaño de la pantalla (PC, tablet o celular) sin que se rompa el diseño.
+
+Te dejo una versión actualizada y mejorada del Index.cshtml con un diseño responsive con Bootstrap 5, usando su sistema de columnas y media queries, pero manteniendo tu estilo visual original 🪐.
+
+✅ Vista Razor mejorada y responsiva (Views/Inicio/Index.cshtml)
+@ {
+    ViewData ["Title"] = "Inicio";
+    Layout = "_Layout";
+}
+
+<style >
+body {
+    background: #f4f6f9;
+}
+
+/* SIDEBAR */
+.sidebar {
+    background: #2c3e50;
+    color: white;
+    padding-top: 20px;
+    min-height: 100vh;
+    position: fixed;
+    width: 230px;
+    transition: all 0.3s ease;
+    z-index: 1000;
+}
+
+    .sidebar a {
+        color: white;
+        text-decoration: none;
+        display: block;
+        padding: 10px 20px;
+        transition: background 0.2s ease;
+    }
+
+        .sidebar a:hover,
+        .sidebar a.active {
+            background: #1abc9c;
+        }
+
+    .sidebar h4 {
+        text-align: center;
+        margin-bottom: 20px;
+    }
+
+/* CONTENIDO */
+.content {
+    margin-left: 230px;
+    padding: 20px;
+    transition: margin-left 0.3s ease;
+}
+
+.card-stats {
+    text-align: center;
+    padding: 20px;
+    border-radius: 10px;
+}
+
+    .card-stats h2 {
+        margin: 0;
+        font-size: 2rem;
+    }
+
+/* RESPONSIVIDAD */
+@media (max-width: 992px) {
+    .sidebar {
+        width: 200px;
+    }
+
+    .content {
+        margin-left: 200px;
+    }
+}
+
+@media (max-width: 768px) {
+    .sidebar {
+        position: relative;
+        width: 100%;
+        height: auto;
+    }
+
+    .content {
+        margin-left: 0;
+    }
+
+    .sidebar h4 {
+        margin-top: 10px;
+    }
+
+    .sidebar a {
+        display: inline-block;
+        padding: 10px;
+        margin: 2px;
+    }
+
+    .card-stats h2 {
+        font-size: 1.5rem;
+    }
+}
+
+</style >
+<!-- Sidebar -->
+<div class="sidebar" >
+<h4 > Pizza Planet 🪐</h4 >
+<a asp-controller="Inicio" asp-action="Index" class="active" > Inicio</a >
+<a asp-controller="Inventarios" asp-action="Index" > Inventario</a >
+<a asp-controller="Categorias" asp-action="Index" > Gestionar Tablas</a >
+<a asp-controller="Movimientos" asp-action="Index" > Registrar Entradas/Salidas</a >
+</div >
+<!-- Contenido principal -->
+<div class="content" >
+<div class="container-fluid" >
+<h3 class="mb-4" > InveDB - Inicio</h3 >
+<!-- Tarjetas resumen -->
+<div class="row g-3 mb-4" >
+<div class="col-12 col-md-4" >
+<div class="card card-stats bg-success text-white shadow" >
+<h2 > 3</h2 >
+<p > Usuarios</p >
+</div >
+</div >
+<div class="col-12 col-md-4" >
+<div class="card card-stats bg-primary text-white shadow" >
+<h2 > 8</h2 >
+<p > Productos</p >
+</div >
+</div >
+<div class="col-12 col-md-4" >
+<div class="card card-stats bg-warning text-white shadow" >
+<h2 > 15</h2 >
+<p > Movimientos</p >
+</div >
+</div >
+</div >
+
+<div class="row g-4" >
+<!-- Productos más usados -->
+<div class="col-12 col-lg-6" >
+<div class="card shadow-sm" >
+<div class="card-header bg-dark text-white" > Productos más usados</div >
+<div class="card-body" >
+<div class="table-responsive" >
+<table class="table table-sm align-middle mb-0" >
+<thead class="table-light" >
+<tr >
+<th > Producto</th >
+<th > Total usado</th >
+<th > Cantidad</th >
+</tr >
+</thead >
+<tbody >
+<tr >
+<td > Pizza Pepperoni</td >
+<td > 300</td >
+<td > 10</td >
+</tr >
+<tr >
+<td > Pizza Hawaiana</td >
+<td > 240</td >
+<td > 8</td >
+</tr >
+<tr >
+<td > Pizza Vegetariana</td >
+<td > 150</td >
+<td > 5</td >
+</tr >
+</tbody >
+</table >
+</div >
+</div >
+</div >
+</div >
+<!-- Últimos movimientos -->
+<div class="col-12 col-lg-6" >
+<div class="card shadow-sm" >
+<div class="card-header bg-dark text-white" > Últimos movimientos</div >
+<div class="card-body" >
+<div class="table-responsive" >
+<table class="table table-sm align-middle mb-0" >
+<thead class="table-light" >
+<tr >
+<th > #</th >
+<th > Producto</th >
+<th > Fecha</th >
+<th > Cantidad</th >
+</tr >
+</thead >
+<tbody >
+<tr >
+<td > 1</td >
+<td > Pizza Pepperoni</td >
+<td > 2025-10-01</td >
+<td > 3</td >
+</tr >
+<tr >
+<td > 2</td >
+<td > Pizza Hawaiana</td >
+<td > 2025-10-01</td >
+<td > 2</td >
+</tr >
+<tr >
+<td > 3</td >
+<td > Pizza Vegetariana</td >
+<td > 2025-09-30</td >
+<td > 1</td >
+</tr >
+</tbody >
+</table >
+</div >
+</div >
+</div >
+</div >
+</div >
+</div > <!-- container-fluid -->
+</div >
+🧠 Qué mejora esta versión:
+✅ 100% responsive:
+
+El menú lateral se convierte en barra superior en pantallas pequeñas (celular o tablet).
+
+Las tarjetas y tablas se apilan automáticamente con col-12 col-md-4, col-lg-6, etc.
+
+Las tablas se hacen deslizables horizontalmente con table-responsive.
+
+✅ Bootstrap puro:
+Todo se adapta usando el sistema de grillas y clases de Bootstrap, sin necesidad de librerías adicionales.
+
+✅ Transiciones suaves:
+La sidebar y el contenido se ajustan con animaciones (transition).
+
+¿Quieres que el menú lateral se pueda ocultar o expandir con un botón tipo “hamburguesa” en móvil (como en los paneles de administración)?
+Puedo agregarte esa versión interactiva con un pequeño script JS y Bootstrap Icons.
+
+Dijiste:
+El nombre 'media' no existe en el contexto actual
+El nombre 'media' no existe en el contexto actual
+ChatGPT dijo:
+Perfecto 🔧
+Ese error de "El nombre 'media' no existe en el contexto actual" aparece porque el archivo .cshtml está interpretando partes del CSS (como @media) como código C#.
+Esto pasa porque Razor usa el símbolo @ para indicar código servidor, y en CSS @media es una instrucción válida, pero Razor intenta compilarla como si fuera C#.
+
+✅ Solución 1 — Escapar @media correctamente
+Cuando escribes CSS directamente en un archivo Razor (.cshtml), debes escapar el @ con otro @.
+
+👉 Cambia todas las líneas como esta:
+
+@media (max-width: 992px) {
+    por esto: @@media (max-width: 992px)
+
+{
+    De esa forma Razor entiende que no es código C#, sino literal de CSS. ✅ Solución 2 — Mover el CSS a un archivo externo Una mejor práctica es poner tu CSS en un archivo separado (por ejemplo wwwroot/css/estilos.css), y en el .cshtml solo hacer: <link rel="stylesheet" href="~/css/estilos.css" /> Así Razor ya no tiene que interpretar los @media ni ningún estilo, y se elimina el error completamente. ⚙️ En resumen ✅ Si quieres mantener el CSS dentro del .cshtml → usa @@media. ✅ Si prefieres hacerlo más limpio y escalable → muévelo a un archivo .css. ¿Quieres que te lo reescriba con el CSS separado en wwwroot/css/estilos.css (opción más limpia y profesional)? Dijiste: haz la segunda opcion ChatGPT dijo: Perfecto 💪 vamos a hacerlo bien estructurado. Aquí tienes cómo dejar tu menú principal adaptativo y limpio, con el CSS separado correctamente. 🗂️ Estructura de archivos Asegúrate de tener esta estructura: InveDB/ ├── wwwroot/ │ └── css/ │ └── estilos.css ├── Views/ │ └── Home/ │ └── Index.cshtml 📄 1. Archivo: Views/Home/Index.cshtml Este será tu menú principal con Razor View limpia: @
+
+{
+    ViewData ["Title"] = "Inicio - Pizzería";
+}
+
+<!DOCTYPE html >
+<html lang="es" >
+<head >
+<meta charset="UTF-8" / >
+<title > @ViewData["Title"]</title >
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" / >
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" > </script >
+
+<link rel="stylesheet" href="~/css/estilos.css" / >
+</head >
+<body >
+<div class="sidebar" >
+<h4 class="text-center" > Pizza Planet 🪐</h4 >
+<a href="#" class="active" > Inicio</a >
+<a href="#" > Inventario</a >
+<a href="#" > Gestionar Tablas</a >
+<a href="#" > Registrar Entradas/Salidas</a >
+</div >
+
+<div class="content" >
+<h3 class="mb-4" > InveDB - Inicio</h3 >
+
+<div class="row mb-4" >
+<div class="col-md-3 col-sm-6" >
+<div class="card card-stats bg-success text-white" >
+<h2 > 3</h2 >
+<p > Usuarios</p >
+</div >
+</div >
+<div class="col-md-3 col-sm-6" >
+<div class="card card-stats bg-primary text-white" >
+<h2 > 8</h2 >
+<p > Productos</p >
+</div >
+</div >
+<div class="col-md-3 col-sm-6" >
+<div class="card card-stats bg-warning text-white" >
+<h2 > 15</h2 >
+<p > Movimientos</p >
+</div >
+</div >
+</div >
+
+<div class="row" >
+<!-- Productos más usados -->
+<div class="col-lg-6 col-md-12 mb-4" >
+<div class="card" >
+<div class="card-header bg-dark text-white" > Productos más usados</div >
+<div class="card-body" >
+<table class="table table-sm" >
+<thead >
+<tr >
+<th > Producto</th >
+<th > Total usado</th >
+<th > Cantidad</th >
+</tr >
+</thead >
+<tbody >
+<tr >
+<td > Pizza Pepperoni</td >
+<td > 300</td >
+<td > 10</td >
+</tr >
+<tr >
+<td > Pizza Hawaiana</td >
+<td > 240</td >
+<td > 8</td >
+</tr >
+<tr >
+<td > Pizza Vegetariana</td >
+<td > 150</td >
+<td > 5</td >
+</tr >
+</tbody >
+</table >
+</div >
+</div >
+</div >
+<!-- Últimos movimientos -->
+<div class="col-lg-6 col-md-12 mb-4" >
+<div class="card" >
+<div class="card-header bg-dark text-white" > Últimos movimientos</div >
+<div class="card-body" >
+<table class="table table-sm" >
+<thead >
+<tr >
+<th > #</th >
+<th > Producto</th >
+<th > Fecha</th >
+<th > Cantidad</th >
+</tr >
+</thead >
+<tbody >
+<tr >
+<td > 1</td >
+<td > Pizza Pepperoni</td >
+<td > 2025-10-01</td >
+<td > 3</td >
+</tr >
+<tr >
+<td > 2</td >
+<td > Pizza Hawaiana</td >
+<td > 2025-10-01</td >
+<td > 2</td >
+</tr >
+<tr >
+<td > 3</td >
+<td > Pizza Vegetariana</td >
+<td > 2025-09-30</td >
+<td > 1</td >
+</tr >
+</tbody >
+</table >
+</div >
+</div >
+</div >
+</div >
+</div >
+</body >
+</html >
+📄 2. Archivo: wwwroot/css/estilos.css
+Aquí va todo el CSS, incluyendo las reglas adaptativas:
+
+body {
+    background: #f4f6f9;
+}
+
+.sidebar {
+    background: #2c3e50;
+    height: 100vh;
+    color: white;
+    padding-top: 20px;
+    position: fixed;
+    width: 230px;
+    transition: all 0.3s ease;
+}
+
+    .sidebar a {
+        color: white;
+        text-decoration: none;
+        display: block;
+        padding: 10px 20px;
+    }
+
+        .sidebar a:hover,
+        .sidebar a.active {
+            background: #1abc9c;
+        }
+
+.content {
+    margin-left: 230px;
+    padding: 20px;
+    transition: all 0.3s ease;
+}
+
+.card-stats {
+    text-align: center;
+    padding: 20px;
+}
+
+    .card-stats h2 {
+        margin: 0;
+        font-size: 2rem;
+    }
+
+/* --- Diseño responsive --- */
+@media (max-width: 992px) {
+    .sidebar {
+        position: relative;
+        width: 100%;
+        height: auto;
+        text-align: center;
+    }
+
+    .content {
+        margin-left: 0;
+    }
+
+    .sidebar a {
+        display: inline-block;
+        padding: 10px 15px;
+    }
+}
+
+@media (max-width: 576px) {
+    .card-stats h2 {
+        font-size: 1.5rem;
+    }
+
+    .card-stats p {
+        font-size: 0.9rem;
+    }
+
+    .table {
+        font-size: 0.9rem;
+    }
+}
+
+✅ Resultado
+El diseño se adapta automáticamente a pantallas pequeñas (sidebar arriba, contenido debajo).
+
+Ya no da el error del @media.
+
+Mantiene la estética moderna de Bootstrap con tu tema “Pizza Planet”.
+
+¿Quieres que agregue un botón para ocultar/mostrar el menú lateral en pantallas móviles (tipo “hamburguesa”)? Haría que el menú sea totalmente responsivo.
+
+
+
+
+Sin archivos seleccionadosSin archivos seleccionados
+ChatGPT puede cometer errores. Comprueba la información importante.

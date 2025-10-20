@@ -1,0 +1,708 @@
+﻿@{
+    ViewData["Title"] = "Gestionar Tablas - Pizza Planet";
+    var productos = ViewData["Productos"] as IEnumerable<dynamic> ?? System.Linq.Enumerable.Empty<dynamic>();
+    var categorias = ViewData["Categorias"] as IEnumerable<InveDB.Modelos.Categoria> ?? System.Linq.Enumerable.Empty<InveDB.Modelos.Categoria>();
+    var proveedores = ViewData["Proveedores"] as IEnumerable<InveDB.Modelos.Proveedor> ?? System.Linq.Enumerable.Empty<InveDB.Modelos.Proveedor>();
+    var sucursales = ViewData["Sucursales"] as IEnumerable<InveDB.Modelos.Sucursal> ?? System.Linq.Enumerable.Empty<InveDB.Modelos.Sucursal>();
+}
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <title>Gestionar Tablas - Pizzería Planet</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <style>
+        body {
+            background: #f4f6f9;
+        }
+
+        .sidebar {
+            background: #2c3e50;
+            height: 100vh;
+            color: white;
+            padding-top: 20px;
+            position: fixed;
+            width: 220px;
+        }
+
+            .sidebar a {
+                color: white;
+                text-decoration: none;
+                display: block;
+                padding: 10px 20px;
+            }
+
+                .sidebar a:hover, .sidebar a.active {
+                    background: #1abc9c;
+                }
+
+            .sidebar h3 {
+                font-size: 1.5rem;
+                text-align: center;
+                margin-bottom: 20px;
+            }
+
+        .content {
+            margin-left: 220px;
+            padding: 20px;
+        }
+
+        .table-container {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-top: 20px;
+            overflow-x: auto;
+        }
+
+        .table-productos {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+        }
+
+            .table-productos th, .table-productos td {
+                border: 1px solid #ddd;
+                padding: 10px;
+                text-align: left;
+            }
+
+            .table-productos th {
+                background: #2c3e50;
+                color: white;
+                text-transform: uppercase;
+            }
+
+            .table-productos tr:nth-child(even) {
+                background: #f4f6f9;
+            }
+
+            .table-productos tr:hover {
+                background: #e0f7fa;
+                cursor: pointer;
+            }
+
+        .action-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .btn-sim {
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .btn-add {
+            background-color: #28a745;
+        }
+
+        .btn-edit {
+            background-color: #ffc107;
+            color: black;
+        }
+
+        .btn-delete {
+            background-color: #dc3545;
+        }
+
+        #formPanel {
+            display: none;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+        }
+
+        .nav-tabs .nav-link.active {
+            background-color: #1abc9c !important;
+            color: white !important;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="sidebar">
+        <h3>Pizza Planet 🪐</h3>
+        <a asp-controller="Inicio" asp-action="Index">Inicio</a>
+        <a asp-controller="Inventario" asp-action="Index">Inventario</a>
+        <a class="active" asp-controller="GestionarTablas" asp-action="Index">Gestionar Tablas</a>
+        <a asp-controller="EntradasSalidas" asp-action="Index">Entradas/Salidas</a>
+    </div>
+
+    <div class="content">
+        <h3 class="mb-4">Gestor de Tablas</h3>
+
+        <!-- Pestañas -->
+        <ul class="nav nav-tabs" id="tabMenu">
+            <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabProductos">Productos</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabCategorias">Categorías</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabProveedores">Proveedores</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabSucursales">Sucursales</button></li>
+        </ul>
+
+        <div class="tab-content mt-4">
+            <!-- ====================== TAB PRODUCTOS ====================== -->
+            <div class="tab-pane fade show active" id="tabProductos">
+                <div class="table-container">
+                    <h4>Productos</h4>
+                    <table id="tablaProductos" class="table table-striped table-bordered">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Producto</th>
+                                <th>Categoría</th>
+                                <th>Precio Unitario</th>
+                                <th>Unidad de Medida</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in ViewBag.Productos)
+                            {
+                                <tr data-id="@item.IdProducto"
+                                    data-nombre="@item.Nombre"
+                                    data-descripcion="@item.Descripcion"
+                                    data-precio="@item.PrecioUnitario"
+                                    data-unidad="@item.UnidadMedida"
+                                    data-categoria-id="@item.IdCategoria"
+                                    data-categoria-nombre="@item.Categoria?.Nombre">
+
+                                    <td>@item.IdProducto</td>
+                                    <td>@item.Nombre</td>
+                                    <td>@item.Categoria?.Nombre</td>
+                                    <td>@item.PrecioUnitario.ToString("0.00")</td>
+                                    <td>@item.UnidadMedida</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+
+                    <div class="action-buttons">
+                        <button class="btn-sim btn-add" id="btnAdd">Añadir</button>
+                        <button class="btn-sim btn-edit" id="btnEdit" disabled>Modificar</button>
+                        <button class="btn-sim btn-delete" id="btnDelete" disabled>Eliminar</button>
+                    </div>
+
+                    <div id="formPanel">
+                        <form id="productoForm" asp-controller="GestionarTablas" asp-action="AgregarProducto" method="post">
+                            <input type="hidden" id="IdProducto" name="IdProducto" />
+
+                            <div class="mb-3">
+                                <label>Nombre</label>
+                                <input type="text" id="Nombre" name="nombre" class="form-control" required />
+                            </div>
+                            <div class="mb-3">
+                                <label>Descripción</label>
+                                <input type="text" id="Descripcion" name="descripcion" class="form-control" />
+                            </div>
+                            <div class="mb-3">
+                                <label>Unidad de Medida</label>
+                                <input type="text" id="UnidadMedida" name="unidadMedida" class="form-control" required />
+                            </div>
+                            <div class="mb-3">
+                                <label>Categoría</label>
+                                <select id="IdCategoria" name="idCategoria" class="form-control" required>
+                                    <option value="">-- Selecciona una categoría --</option>
+                                    @foreach (var cat in categorias)
+                                    {
+                                        <option value="@cat.IdCategoria">@cat.Nombre</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label>Precio Unitario</label>
+                                <input type="number" id="PrecioUnitario" name="precioUnitario" step="0.01" class="form-control" required />
+                            </div>
+
+                            <div class="text-end">
+                                <button type="submit" class="btn btn-success">Guardar</button>
+                                <button type="button" id="btnCancelar" class="btn btn-secondary">Cancelar</button>
+                            </div>
+                        </form>
+                    </div>
+
+                </div>
+            </div>
+
+           <!-- ====================== TAB CATEGORÍAS ====================== -->
+<div class="tab-pane fade" id="tabCategorias">
+    <div class="table-container">
+        <h4>Categorías</h4>
+        <table id="tablaCategorias" class="table table-striped table-bordered">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>Descripción</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var c in categorias)
+                {
+                                <tr data-id="@c.IdCategoria"
+                                    data-nombre="@c.Nombre"
+                                    data-descripcion="@c.Descripcion">
+                                    <td>@c.IdCategoria</td>
+                                    <td>@c.Nombre</td>
+                                    <td>@c.Descripcion</td>
+                                </tr>
+                }
+            </tbody>
+        </table>
+
+        <div class="action-buttons">
+            <button class="btn-sim btn-add" id="btnAddCat">Añadir</button>
+            <button class="btn-sim btn-edit" id="btnEditCat" disabled>Modificar</button>
+            <button class="btn-sim btn-delete" id="btnDeleteCat" disabled>Eliminar</button>
+        </div>
+
+        <div id="formPanelCat" style="display:none;">
+                        <form id="categoriaForm" method="post" action="/GestionarTablas/AgregarCategoria">
+                            <input type="hidden" id="IdCategoriaCat" name="idCategoria" />
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label>Nombre</label>
+                                    <input type="text" class="form-control" id="NombreCat" name="nombre" required />
+                                </div>
+                                <div class="col-md-6">
+                                    <label>Descripción</label>
+                                    <input type="text" class="form-control" id="DescripcionCat" name="descripcion" />
+                                </div>
+                            </div>
+                            <div class="mt-3 text-end">
+                                <button type="submit" class="btn btn-success">Confirmar</button>
+                                <button type="button" class="btn btn-secondary" id="btnCancelarCat">Cancelar</button>
+                            </div>
+                        </form>
+        </div>
+    </div>
+</div>
+
+
+
+            <!-- ====================== TAB PROVEEDORES ====================== -->
+            <div class="tab-pane fade" id="tabProveedores">
+                <div class="table-container">
+                    <h4>Proveedores</h4>
+                    <table id="tablaProveedores" class="table table-striped table-bordered">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nombre</th>
+                                <th>Teléfono</th>
+                                <th>Dirección</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var pr in proveedores)
+                            {
+                                <tr data-id="@pr.IdProveedor"
+                                    data-nombre="@pr.Nombre"
+                                    data-telefono="@pr.Telefono"
+                                    data-direccion="@pr.Direccion">
+                                    <td>@pr.IdProveedor</td>
+                                    <td>@pr.Nombre</td>
+                                    <td>@pr.Telefono</td>
+                                    <td>@pr.Direccion</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+
+                    <div class="action-buttons">
+                        <button class="btn-sim btn-add" id="btnAddProv">Añadir</button>
+                        <button class="btn-sim btn-edit" id="btnEditProv" disabled>Modificar</button>
+                        <button class="btn-sim btn-delete" id="btnDeleteProv" disabled>Eliminar</button>
+                    </div>
+
+                    <!-- Formulario de proveedores: asegurar action por defecto y nombre del id oculto -->
+                    <div id="formPanelProv" style="display:none;">
+                        <form id="proveedorForm" method="post" action="/GestionarTablas/AgregarProveedor">
+                            <input type="hidden" id="IdProveedor" name="idProveedor" />
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <label>Nombre</label>
+                                    <input type="text" class="form-control" id="NombreProv" name="Nombre" required />
+                                </div>
+                                <div class="col-md-4">
+                                    <label>Teléfono</label>
+                                    <input type="text" class="form-control" id="TelefonoProv" name="Telefono" />
+                                </div>
+                                <div class="col-md-4">
+                                    <label>Dirección</label>
+                                    <input type="text" class="form-control" id="DireccionProv" name="Direccion" />
+                                </div>
+                            </div>
+                            <div class="mt-3 text-end">
+                                <button type="submit" class="btn btn-success">Confirmar</button>
+                                <button type="button" class="btn btn-secondary" id="btnCancelarProv">Cancelar</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ====================== TAB SUCURSALES ====================== -->
+            <div class="tab-pane fade" id="tabSucursales">
+                <div class="table-container">
+                    <h4>Sucursales</h4>
+                    <table id="tablaSucursales" class="table table-striped table-bordered">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nombre</th>
+                                <th>Dirección</th>
+                                <th>Teléfono</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var s in sucursales)
+                            {
+                                <tr data-id="@s.IdSucursal"
+                                    data-nombre="@s.Nombre"
+                                    data-direccion="@s.Direccion"
+                                    data-telefono="@s.Telefono">
+                                    <td>@s.IdSucursal</td>
+                                    <td>@s.Nombre</td>
+                                    <td>@s.Direccion</td>
+                                    <td>@s.Telefono</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+
+                    <div class="action-buttons">
+                        <button class="btn-sim btn-add" id="btnAddSuc">Añadir</button>
+                        <button class="btn-sim btn-edit" id="btnEditSuc" disabled>Modificar</button>
+                        <button class="btn-sim btn-delete" id="btnDeleteSuc" disabled>Eliminar</button>
+                    </div>
+
+                    <div id="formPanelSuc" style="display:none;">
+                        <form id="sucursalForm" method="post">
+                            <input type="hidden" id="IdSucursal" name="IdSucursal" />
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <label>Nombre</label>
+                                    <input type="text" class="form-control" id="NombreSuc" name="Nombre" required />
+                                </div>
+                                <div class="col-md-4">
+                                    <label>Dirección</label>
+                                    <input type="text" class="form-control" id="DireccionSuc" name="Direccion" />
+                                </div>
+                                <div class="col-md-4">
+                                    <label>Teléfono</label>
+                                    <input type="text" class="form-control" id="TelefonoSuc" name="Telefono" />
+                                </div>
+                            </div>
+                            <div class="mt-3 text-end">
+                                <button type="submit" class="btn btn-success">Confirmar</button>
+                                <button type="button" class="btn btn-secondary" id="btnCancelarSuc">Cancelar</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let filaSeleccionada = null;
+
+        
+        // SELECCIÓN DE FILAS
+        
+        function activarSeleccion(idTabla, idEditar, idEliminar) {
+            const tabla = document.getElementById(idTabla);
+            if (!tabla) return;
+
+            tabla.querySelectorAll("tbody tr").forEach(fila => {
+                fila.addEventListener("click", () => {
+                    // eliminar cualquier selección anterior en esa tabla
+                    tabla.querySelectorAll("tbody tr").forEach(f => f.classList.remove("table-primary"));
+                    // marcar la fila clicada
+                    fila.classList.add("table-primary");
+                    filaSeleccionada = fila;
+                    // habilitar botones correspondientes
+                    const btnEdit = document.getElementById(idEditar);
+                    const btnDel = document.getElementById(idEliminar);
+                    if (btnEdit) btnEdit.disabled = false;
+                    if (btnDel) btnDel.disabled = false;
+                });
+            });
+        }
+
+        // CERRAR FORMULARIOS
+        function cerrarTodosLosFormularios() {
+            document.querySelectorAll("#formPanel, #formPanelCat, #formPanelProv, #formPanelSuc")
+                .forEach(f => f.style.display = "none");
+            // no limpies filaSeleccionada aquí si vas a usar sus datos inmediatamente:
+            // filaSeleccionada = null;
+            // dejamos la eliminación visual para cuando cierre el formulario manualmente
+            document.querySelectorAll(".table-primary").forEach(f => f.classList.remove("table-primary"));
+        }
+
+        // ELIMINAR REGISTRO (genérico)
+        async function eliminarRegistro(url, idCampo, idValor) {
+            if (!idValor) return;
+            if (!confirm("¿Seguro que deseas eliminar este registro?")) return;
+
+            const bodyData = `${idCampo}=${encodeURIComponent(idValor)}`;
+
+            try {
+                const resp = await fetch(url, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                    body: bodyData
+                });
+
+                const texto = await resp.text();
+                if (resp.ok) {
+                    // quitar fila de la tabla
+                    if (filaSeleccionada) filaSeleccionada.remove();
+                    filaSeleccionada = null;
+                    alert("✅ Registro eliminado correctamente");
+                } else if (texto.includes("REFERENCE constraint") || texto.includes("conflicted")) {
+                    alert("⚠️ No se puede eliminar este registro porque está asociado a otros datos (por ejemplo, inventario).");
+                } else {
+                    alert("❌ Error al eliminar el registro.\n" + texto);
+                }
+            } catch (err) {
+                alert("⚠️ Ocurrió un error al conectar con el servidor.");
+                console.error(err);
+            }
+        }
+
+        // FUNCIÓN GENÉRICA PARA FORMULARIOS CRUD
+        function manejarFormulario(formId, nombreEntidad) {
+            const form = document.getElementById(formId);
+            if (!form) return;
+
+            form.addEventListener("submit", async function (e) {
+                e.preventDefault();
+                const url = form.dataset.action || form.getAttribute("action");
+                const datos = new FormData(form);
+
+                try {
+                    const respuesta = await fetch(url, { method: "POST", body: datos });
+                    if (respuesta.ok) {
+                        location.reload();
+                    } else {
+                        alert(`❌ Error al guardar ${nombreEntidad.toLowerCase()}`);
+                    }
+                } catch (error) {
+                    console.error(`Error al procesar ${nombreEntidad}:`, error);
+                    alert(`⚠️ No se pudo conectar al servidor para guardar ${nombreEntidad.toLowerCase()}`);
+                }
+            });
+        }
+
+        // PRODUCTOS
+        activarSeleccion("tablaProductos", "btnEdit", "btnDelete");
+
+        document.getElementById("btnAdd").addEventListener("click", () => {
+            cerrarTodosLosFormularios();
+            document.getElementById("formPanel").style.display = "block";
+            const form = document.getElementById("productoForm");
+            form.dataset.action = "/GestionarTablas/AgregarProducto";
+            form.reset();
+        });
+
+        document.getElementById("btnEdit").addEventListener("click", () => {
+            // guarda referencia a la fila seleccionada ANTES de cerrar formularios
+            const fila = filaSeleccionada;
+            if (!fila) return;
+
+            // cierra formularios visuales (no sobreescribimos fila)
+            cerrarTodosLosFormularios();
+
+            // muetra el panel
+            document.getElementById("formPanel").style.display = "block";
+            const form = document.getElementById("productoForm");
+            form.dataset.action = "/GestionarTablas/EditarProducto";
+
+            // Rellenar campos usando los data-*
+            // data-id, data-nombre, data-descripcion, data-precio, data-unidad, data-categoria-id, data-categoria-nombre
+            document.getElementById("IdProducto").value = fila.dataset.id || "";
+            document.getElementById("Nombre").value = fila.dataset.nombre || "";
+            document.getElementById("Descripcion").value = fila.dataset.descripcion || "";
+            document.getElementById("PrecioUnitario").value = fila.dataset.precio || "";
+            document.getElementById("UnidadMedida").value = fila.dataset.unidad || "";
+
+            // Seleccionar categoría por id si existe, si no buscar por nombre
+            const categoriaId = fila.dataset.categoriaId;
+            const categoriaNombre = fila.dataset.categoriaNombre;
+            const selectCat = document.getElementById("IdCategoria");
+            if (selectCat) {
+                let seleccionado = false;
+                if (categoriaId) {
+                    for (let opt of selectCat.options) {
+                        if (opt.value === categoriaId) {
+                            opt.selected = true;
+                            seleccionado = true;
+                            break;
+                        }
+                    }
+                }
+                if (!seleccionado && categoriaNombre) {
+                    for (let opt of selectCat.options) {
+                        if (opt.text === categoriaNombre) {
+                            opt.selected = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        });
+
+        document.getElementById("btnDelete").addEventListener("click", () => {
+            if (filaSeleccionada)
+                eliminarRegistro("/GestionarTablas/EliminarProducto", "idProducto", filaSeleccionada.dataset.id);
+        });
+
+        document.getElementById("btnCancelar").addEventListener("click", () => {
+            // ocultar panel y mantener selección limpia
+            document.getElementById("formPanel").style.display = "none";
+            filaSeleccionada = null;
+            document.querySelectorAll(".table-primary").forEach(f => f.classList.remove("table-primary"));
+        });
+
+        manejarFormulario("productoForm", "Producto");
+
+        //  CATEGORÍAS
+        activarSeleccion("tablaCategorias", "btnEditCat", "btnDeleteCat");
+
+        document.getElementById("btnAddCat").addEventListener("click", () => {
+            cerrarTodosLosFormularios();
+            document.getElementById("formPanelCat").style.display = "block";
+            const form = document.getElementById("categoriaForm");
+            form.dataset.action = "/GestionarTablas/AgregarCategoria";
+            form.reset();
+        });
+
+                document.getElementById("btnEditCat").addEventListener("click", () => {
+            const fila = filaSeleccionada;
+            if (!fila) return;
+
+            cerrarTodosLosFormularios();
+            document.getElementById("formPanelCat").style.display = "block";
+            const form = document.getElementById("categoriaForm");
+            form.dataset.action = "/GestionarTablas/EditarCategoria";
+
+                    // Rellenar el hidden de categoría con el id correcto (evitando conflicto de ids)
+        const idCatDesdeDataset = fila.dataset.id || fila.dataset.idcategoria || fila.getAttribute('data-id') || fila.getAttribute('data-id_categoria') || "";
+        document.getElementById("IdCategoriaCat").value = idCatDesdeDataset;
+
+        document.getElementById("NombreCat").value = fila.dataset.nombre || "";
+        document.getElementById("DescripcionCat").value = fila.dataset.descripcion || "";
+
+        });
+
+        document.getElementById("btnDeleteCat").addEventListener("click", () => {
+            if (filaSeleccionada)
+                eliminarRegistro("/GestionarTablas/EliminarCategoria", "idCategoria", filaSeleccionada.dataset.id);
+        });
+
+        document.getElementById("btnCancelarCat").addEventListener("click", () => {
+            document.getElementById("formPanelCat").style.display = "none";
+            filaSeleccionada = null;
+            document.querySelectorAll(".table-primary").forEach(f => f.classList.remove("table-primary"));
+        });
+
+        manejarFormulario("categoriaForm", "Categoría");
+
+        // PROVEEDORES
+        activarSeleccion("tablaProveedores", "btnEditProv", "btnDeleteProv");
+
+        document.getElementById("btnAddProv").addEventListener("click", () => {
+            cerrarTodosLosFormularios();
+            document.getElementById("formPanelProv").style.display = "block";
+            const form = document.getElementById("proveedorForm");
+            form.dataset.action = "/GestionarTablas/AgregarProveedor";
+            form.reset();
+        });
+
+        document.getElementById("btnEditProv").addEventListener("click", () => {
+            const fila = filaSeleccionada;
+            if (!fila) return;
+
+            cerrarTodosLosFormularios();
+            document.getElementById("formPanelProv").style.display = "block";
+            const form = document.getElementById("proveedorForm");
+            form.dataset.action = "/GestionarTablas/EditarProveedor";
+
+            document.getElementById("IdProveedor").value = fila.dataset.id || "";
+            document.getElementById("NombreProv").value = fila.dataset.nombre || "";
+            document.getElementById("TelefonoProv").value = fila.dataset.telefono || "";
+            document.getElementById("DireccionProv").value = fila.dataset.direccion || "";
+        });
+
+        document.getElementById("btnDeleteProv").addEventListener("click", () => {
+            if (filaSeleccionada)
+                eliminarRegistro("/GestionarTablas/EliminarProveedor", "idProveedor", filaSeleccionada.dataset.id);
+        });
+
+        document.getElementById("btnCancelarProv").addEventListener("click", () => {
+            document.getElementById("formPanelProv").style.display = "none";
+            filaSeleccionada = null;
+            document.querySelectorAll(".table-primary").forEach(f => f.classList.remove("table-primary"));
+        });
+
+        manejarFormulario("proveedorForm", "Proveedor");
+
+        // SUCURSALES
+        activarSeleccion("tablaSucursales", "btnEditSuc", "btnDeleteSuc");
+
+        document.getElementById("btnAddSuc").addEventListener("click", () => {
+            cerrarTodosLosFormularios();
+            document.getElementById("formPanelSuc").style.display = "block";
+            const form = document.getElementById("sucursalForm");
+            form.dataset.action = "/GestionarTablas/AgregarSucursal";
+            form.reset();
+        });
+
+        document.getElementById("btnEditSuc").addEventListener("click", () => {
+            const fila = filaSeleccionada;
+            if (!fila) return;
+
+            cerrarTodosLosFormularios();
+            document.getElementById("formPanelSuc").style.display = "block";
+            const form = document.getElementById("sucursalForm");
+            form.dataset.action = "/GestionarTablas/EditarSucursal";
+
+            document.getElementById("IdSucursal").value = fila.dataset.id || "";
+            document.getElementById("NombreSuc").value = fila.dataset.nombre || "";
+            document.getElementById("DireccionSuc").value = fila.dataset.direccion || "";
+            document.getElementById("TelefonoSuc").value = fila.dataset.telefono || "";
+        });
+
+        document.getElementById("btnDeleteSuc").addEventListener("click", () => {
+            if (filaSeleccionada)
+                eliminarRegistro("/GestionarTablas/EliminarSucursal", "idSucursal", filaSeleccionada.dataset.id);
+        });
+
+        document.getElementById("btnCancelarSuc").addEventListener("click", () => {
+            document.getElementById("formPanelSuc").style.display = "none";
+            filaSeleccionada = null;
+            document.querySelectorAll(".table-primary").forEach(f => f.classList.remove("table-primary"));
+        });
+
+        manejarFormulario("sucursalForm", "Sucursal");
+    </script>
+
+
+
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,52 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="Views\Categorias\**" />
+    <Compile Remove="Views\Inventarios\**" />
+    <Compile Remove="Views\Movimientoes\**" />
+    <Compile Remove="Views\Productoes\**" />
+    <Compile Remove="Views\Proveedors\**" />
+    <Content Remove="Views\Categorias\**" />
+    <Content Remove="Views\Inventarios\**" />
+    <Content Remove="Views\Movimientoes\**" />
+    <Content Remove="Views\Productoes\**" />
+    <Content Remove="Views\Proveedors\**" />
+    <EmbeddedResource Remove="Views\Categorias\**" />
+    <EmbeddedResource Remove="Views\Inventarios\**" />
+    <EmbeddedResource Remove="Views\Movimientoes\**" />
+    <EmbeddedResource Remove="Views\Productoes\**" />
+    <EmbeddedResource Remove="Views\Proveedors\**" />
+    <None Remove="Views\Categorias\**" />
+    <None Remove="Views\Inventarios\**" />
+    <None Remove="Views\Movimientoes\**" />
+    <None Remove="Views\Productoes\**" />
+    <None Remove="Views\Proveedors\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="Class.cs" />
+    <Compile Remove="Controles\InventariosController.cs" />
+    <Compile Remove="Controles\MovimientoesController.cs" />
+    <Compile Remove="Controles\ProductoesController.cs" />
+    <Compile Remove="Controles\ProveedorsController.cs" />
+    <Compile Remove="Controles\SucursalsController.cs" />
+    <Compile Remove="Modelos\AlmacenPTestContext.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.10" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.10" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.10">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="9.0.0" />
+  </ItemGroup>
+
+</Project>
