@@ -12,7 +12,7 @@ CAMBIEN
 POR    
 
 "ConnectionStrings": {
-  "DefaultConnection": "Server=*SU SERVIDOR*;Database=*NOMBRE DE LA BASE DE DATOS*;User Id=*USUARIO*;Password=*CONTRASEÑA*;Trusted_Connection=False;MultipleActiveResultSets=true;TrustServerCertificate=True;"
+  "DefaultConnection": "Server=SU SERVIDOR;Database=NOMBRE DE LA BASE DE DATOS;User Id=USUARIO;Password=CONTRASEÑA;Trusted_Connection=False;MultipleActiveResultSets=true;TrustServerCertificate=True;"
 },
 ------------------------------------------------------------
 -- 1️⃣ CREACIÓN DE BASE DE DATOS
