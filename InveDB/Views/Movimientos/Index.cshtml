@@ -1,0 +1,266 @@
+﻿@model IEnumerable<InveDB.Controles.MovimientoViewModel>
+
+@{
+    ViewData["Title"] = "Gestión de Movimientos";
+    Layout = "_Layout";
+}
+<!-- Mensajes de éxito o error -->
+@if (TempData["Mensaje"] != null)
+{
+    <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1100;">
+        <div class="toast align-items-center text-bg-success border-0 show" role="alert">
+            <div class="d-flex">
+                <div class="toast-body">
+                    @TempData["Mensaje"]
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1100;">
+        <div class="toast align-items-center text-bg-danger border-0 show" role="alert">
+            <div class="d-flex">
+                <div class="toast-body">
+                    @TempData["Error"]
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+    </div>
+}
+
+
+<h3 class="mb-4">Entradas y Salidas de Inventario</h3>
+
+<!-- 🔍 FILTROS -->
+<div class="filter-section mb-4 row g-3 align-items-end">
+    <div class="col-md-2">
+        <label class="form-label fw-semibold">Producto</label>
+        <input type="text" class="form-control" id="filtroProducto" placeholder="Buscar producto..." onkeyup="filtrarMovimientos()" />
+        <select class="form-select mt-1" id="dropdownProducto" onchange="filtrarPorDropdown('producto')">
+            <option value="">-- Seleccionar producto --</option>
+            @foreach (var p in ViewBag.Productos)
+            {
+                <option value="@p">@p</option>
+            }
+        </select>
+    </div>
+
+    <div class="col-md-1">
+        <label class="form-label fw-semibold">Tipo</label>
+        <select class="form-select" id="filtroTipo" onchange="filtrarMovimientos()">
+            <option value="">Todos</option>
+            <option value="E">Entradas</option>
+            <option value="S">Salidas</option>
+        </select>
+    </div>
+
+    <div class="col-md-2">
+        <label class="form-label fw-semibold">Proveedor</label>
+        <select class="form-select" id="filtroProveedor" onchange="filtrarMovimientos()">
+            <option value="">Todos</option>
+            @foreach (var pr in ViewBag.Proveedores)
+            {
+                <option value="@pr">@pr</option>
+            }
+        </select>
+    </div>
+
+    <div class="col-md-2">
+        <label class="form-label fw-semibold">Sucursal</label>
+        <select class="form-select" id="filtroSucursal" onchange="filtrarMovimientos()">
+            <option value="">Todas</option>
+            @foreach (var s in ViewBag.Sucursales)
+            {
+                <option value="@s">@s</option>
+            }
+        </select>
+    </div>
+
+    <div class="col-md-3">
+        <label class="form-label fw-semibold">Fecha</label>
+        <input type="date" class="form-control mb-1" id="filtroFecha" onchange="filtrarMovimientos()" />
+        <select class="form-select" id="dropdownFecha" onchange="filtrarPorDropdown('fecha')">
+            <option value="">-- Seleccionar fecha --</option>
+            @foreach (var f in ViewBag.Fechas)
+            {
+                <option value="@Convert.ToDateTime(f).ToString("yyyy-MM-dd")">@Convert.ToDateTime(f).ToString("yyyy-MM-dd")</option>
+            }
+        </select>
+    </div>
+
+    <div class="col-md-1 d-flex justify-content-center">
+        <button class="btn btn-outline-danger mt-2" onclick="limpiarFiltros()">🧹</button>
+    </div>
+</div>
+
+
+<!-- 🧾 TABLA -->
+<div class="table-responsive">
+    <table class="table table-bordered table-striped" id="tablaMovimientos">
+        <thead class="table-dark">
+            <tr>
+                <th>Producto</th>
+                <th>Tipo</th>
+                <th>Cantidad</th>
+                <th>Proveedor</th>
+                <th>Sucursal</th>
+                <th>Fecha</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Model.Any())
+            {
+                foreach (var m in Model)
+                {
+                    <tr>
+                        <td>@m.Producto</td>
+                        <td>@(m.Tipo == "E" ? "Entrada" : "Salida")</td>
+                        <td>@m.Cantidad</td>
+                        <td>@m.Proveedor</td>
+                        <td>@m.Sucursal</td>
+                        <td>@m.Fecha.ToString("yyyy-MM-dd")</td>
+                    </tr>
+                }
+            }
+            else
+            {
+                <tr>
+                    <td colspan="6" class="text-center text-muted">No hay movimientos registrados</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<!-- ➕ FORMULARIO REGISTRO -->
+<hr />
+<h5>Registrar nuevo movimiento</h5>
+<form method="post" asp-action="RegistrarMovimiento" asp-controller="Movimientos" class="row g-3">
+    @Html.AntiForgeryToken()
+    <div class="col-md-3">
+        <label>Producto</label>
+        <select class="form-select" name="idProducto" required>
+            <option value="">-- Seleccionar --</option>
+            @foreach (var p in (List<(int Id, string Nombre)>)ViewBag.Productos)
+            {
+                <option value="@p.Id">@p.Nombre</option>
+            }
+        </select>
+    </div>
+
+    <div class="col-md-2">
+        <label>Tipo</label>
+        <select class="form-select" name="tipo" required>
+            <option value="E">Entrada</option>
+            <option value="S">Salida</option>
+        </select>
+    </div>
+
+    <div class="col-md-2">
+        <label>Cantidad</label>
+        <input type="number" class="form-control" step="0.01" name="cantidad" required />
+    </div>
+
+    <div class="col-md-2">
+        <label>Proveedor</label>
+        <select class="form-select" name="idProveedor">
+            <option value="">-- Ninguno --</option>
+            @foreach (var pr in (List<(int Id, string Nombre)>)ViewBag.Proveedores)
+            {
+                <option value="@pr.Id">@pr.Nombre</option>
+            }
+        </select>
+    </div>
+
+    <div class="col-md-2">
+        <label>Sucursal</label>
+        <select class="form-select" name="idSucursal">
+            <option value="">-- Ninguna --</option>
+            @foreach (var s in (List<(int Id, string Nombre)>)ViewBag.Sucursales)
+            {
+                <option value="@s.Id">@s.Nombre</option>
+            }
+        </select>
+    </div>
+
+    <div class="col-md-1 d-flex align-items-end">
+        <button type="submit" class="btn btn-success">➕</button>
+    </div>
+</form>
+
+
+<!-- 🎨 JS + CSS en el mismo archivo -->
+<style>
+    .filter-section label {
+        font-weight: 600;
+    }
+
+    .table th, .table td {
+        vertical-align: middle;
+    }
+</style>
+
+<script>
+    function filtrarMovimientos() {
+        let prod = document.getElementById("filtroProducto").value.toLowerCase();
+        let tipo = document.getElementById("filtroTipo").value.toLowerCase();
+        let fecha = document.getElementById("filtroFecha").value;
+        let prov = document.getElementById("filtroProveedor").value.toLowerCase();
+        let suc = document.getElementById("filtroSucursal").value.toLowerCase();
+
+        let filas = document.querySelectorAll("#tablaMovimientos tbody tr");
+
+        filas.forEach(fila => {
+            let p = fila.cells[0].textContent.toLowerCase();
+            let t = fila.cells[1].textContent.toLowerCase();
+            let c = fila.cells[2].textContent.toLowerCase();
+            let pr = fila.cells[3].textContent.toLowerCase();
+            let s = fila.cells[4].textContent.toLowerCase();
+            let f = fila.cells[5].textContent.trim();
+
+            if (
+                p.includes(prod) &&
+                (tipo === "" || t.includes(tipo)) &&
+                (fecha === "" || f === fecha) &&
+                (prov === "" || pr.includes(prov)) &&
+                (suc === "" || s.includes(suc))
+            )
+                fila.style.display = "";
+            else
+                fila.style.display = "none";
+        });
+    }
+
+    function filtrarPorDropdown(tipo) {
+        let valor = "";
+        switch (tipo) {
+            case "producto":
+                valor = document.getElementById("dropdownProducto").value;
+                document.getElementById("filtroProducto").value = valor;
+                break;
+            case "fecha":
+                valor = document.getElementById("dropdownFecha").value;
+                document.getElementById("filtroFecha").value = valor;
+                break;
+        }
+        filtrarMovimientos();
+    }
+
+    function limpiarFiltros() {
+        document.getElementById("filtroProducto").value = "";
+        document.getElementById("filtroTipo").value = "";
+        document.getElementById("filtroFecha").value = "";
+        document.getElementById("dropdownProducto").value = "";
+        document.getElementById("dropdownFecha").value = "";
+        document.getElementById("filtroProveedor").value = "";
+        document.getElementById("filtroSucursal").value = "";   
+        filtrarMovimientos();
+    }
+    if (window.history.replaceState) {
+    window.history.replaceState(null, null, window.location.href);
+</script>
+

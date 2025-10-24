@@ -23,7 +23,8 @@
             <a asp-controller="Inicio" asp-action="Index" class="@(ViewData["ActivePage"]?.ToString() == "Inicio" ? "active" : "")">Inicio</a>
             <a asp-controller="Inventario" asp-action="Index" class="@(ViewData["ActivePage"]?.ToString() == "Inventario" ? "active" : "")">Inventario</a>
             <a asp-controller="GestionarTablas" asp-action="Index" class="@(ViewData["ActivePage"]?.ToString() == "GestionarTablas" ? "active" : "")">Gestionar Tablas</a>
-            <a asp-controller="EntradasSalidas" asp-action="Index" class="@(ViewData["ActivePage"]?.ToString() == "EntradasSalidas" ? "active" : "")">Registrar Entradas/Salidas</a>
+            <a asp-controller="Movimientos" asp-action="Index" class="@(ViewData["ActivePage"]?.ToString() == "Movimientos" ? "active" : "")">Registrar Entradas/Salidas</a>
+
         </div>
 
         <!-- ===== Contenido principal ===== -->
