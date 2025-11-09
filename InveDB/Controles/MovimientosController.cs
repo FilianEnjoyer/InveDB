@@ -1,9 +1,10 @@
 ﻿using InveDB.Datos;
+using InveDB.Modelos;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using System;
 using System.Data;
-using InveDB.Modelos;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace InveDB.Controles
 {
@@ -121,28 +122,7 @@ namespace InveDB.Controles
 
                 _cmd.EjecutarNonQuery(sqlInsert);
 
-                //  Verificar si el producto ya existe en Inventario
-                string sqlExiste = $"SELECT COUNT(*) FROM Inventario WHERE id_producto = {idProducto}";
-                var dt = _cmd.EjecutarConsulta(sqlExiste);
-                int existe = Convert.ToInt32(dt.Rows[0][0]);
-
-                if (existe == 0)
-                {
-                    // Si no existe, lo creamos con la cantidad inicial
-                    string sqlNuevo = $@"
-                INSERT INTO Inventario (id_producto, cantidad)
-                VALUES ({idProducto}, {(tipo == "E" ? cantidad : -cantidad)})";
-                    _cmd.EjecutarNonQuery(sqlNuevo);
-                }
-                else
-                {
-                    //  Actualizar cantidad correctamente
-                    string sqlUpdate = tipo == "E"
-                        ? $"UPDATE Inventario SET cantidad = cantidad + {cantidad} WHERE id_producto = {idProducto}"
-                        : $"UPDATE Inventario SET cantidad = cantidad - {cantidad} WHERE id_producto = {idProducto}";
-
-                    _cmd.EjecutarNonQuery(sqlUpdate);
-                }
+                
 
                 //  Redirigir con TempData (evita doble envío en recarga)
                 TempData["Mensaje"] = "Movimiento registrado correctamente.";
@@ -150,13 +130,27 @@ namespace InveDB.Controles
             }
             catch (Exception ex)
             {
-                TempData["Error"] = "❌ Error al registrar movimiento: " + ex.Message;
+                TempData["Error"] = " Error al registrar movimiento: " + ex.Message;
                 return RedirectToAction(nameof(Index));
             }
         }
+        public decimal DetectarSiEsPar(decimal numero)
+        {
+            if (numero % 2 == 0)
+            {
+                return numero/2; 
+            }
+            else
+            {
+                return (numero/2)+2; 
+            }
 
+        }
 
-    }
+    } 
+    
+
+    
 
     public class MovimientoViewModel
     {

@@ -1,5 +1,6 @@
 ﻿@{
     ViewData["Title"] = "Gestionar Tablas - Pizza Planet";
+    Layout = "_Layout";
     var productos = ViewData["Productos"] as IEnumerable<dynamic> ?? System.Linq.Enumerable.Empty<dynamic>();
     var categorias = ViewData["Categorias"] as IEnumerable<InveDB.Modelos.Categoria> ?? System.Linq.Enumerable.Empty<InveDB.Modelos.Categoria>();
     var proveedores = ViewData["Proveedores"] as IEnumerable<InveDB.Modelos.Proveedor> ?? System.Linq.Enumerable.Empty<InveDB.Modelos.Proveedor>();
@@ -131,16 +132,7 @@
 </head>
 
 <body>
-    <div class="sidebar">
-        <h3>Pizza Planet 🪐</h3>
-        <a asp-controller="Inicio" asp-action="Index">Inicio</a>
-        <a asp-controller="Inventario" asp-action="Index">Inventario</a>
-        <a class="active" asp-controller="GestionarTablas" asp-action="Index">Gestionar Tablas</a>
-        <a asp-controller="EntradasSalidas" asp-action="Index">Entradas/Salidas</a>
-    </div>
-
-    <div class="content">
-        <h3 class="mb-4">Gestor de Tablas</h3>
+   
 
         <!-- Pestañas -->
         <ul class="nav nav-tabs" id="tabMenu">
