@@ -1,8 +1,26 @@
 ﻿@model IEnumerable<InveDB.Modelos.InventarioViewModel>
 
+
 @{
     ViewData["Title"] = "Inventario";
-    Layout = "_Layout";
+    var rol = Context.Session.GetString("Rol");
+
+    if (rol == "Admin")
+    {
+        Layout = "~/Views/Shared/_LayoutAdmin.cshtml";
+    }
+    else if (rol == "Capturista")
+    {
+        Layout = "~/Views/Shared/_LayoutCapturista.cshtml";
+    }
+    else if (rol == "Encargado")
+    {
+        Layout = "~/Views/Shared/_LayoutEncargado.cshtml";
+    }
+    else
+    {
+        Layout = "~/Views/Shared/_Layout.cshtml"; // por si existe el layout general
+    }
 }
 
 <h3 class="mb-4">InveDB - Inventario</h3>

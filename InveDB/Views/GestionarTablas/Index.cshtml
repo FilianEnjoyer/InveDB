@@ -1,6 +1,24 @@
-﻿@{
+﻿
+@{
     ViewData["Title"] = "Gestionar Tablas - Pizza Planet";
-    Layout = "_Layout";
+    var rol = Context.Session.GetString("Rol");
+
+    if (rol == "Admin")
+    {
+        Layout = "~/Views/Shared/_LayoutAdmin.cshtml";
+    }
+    else if (rol == "Capturista")
+    {
+        Layout = "~/Views/Shared/_LayoutCapturista.cshtml";
+    }
+    else if (rol == "Encargado")
+    {
+        Layout = "~/Views/Shared/_LayoutEncargado.cshtml";
+    }
+    else
+    {
+        Layout = "~/Views/Shared/_Layout.cshtml"; // por si existe el layout general
+    }
     var productos = ViewData["Productos"] as IEnumerable<dynamic> ?? System.Linq.Enumerable.Empty<dynamic>();
     var categorias = ViewData["Categorias"] as IEnumerable<InveDB.Modelos.Categoria> ?? System.Linq.Enumerable.Empty<InveDB.Modelos.Categoria>();
     var proveedores = ViewData["Proveedores"] as IEnumerable<InveDB.Modelos.Proveedor> ?? System.Linq.Enumerable.Empty<InveDB.Modelos.Proveedor>();

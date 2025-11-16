@@ -10,20 +10,23 @@ namespace InveDB.Controles
 {
     public class MovimientosController : Controller
     {
-        private readonly IConfiguration _configuration;
         private readonly EjecutarCmdWeb _cmd;
-
-        public MovimientosController(IConfiguration configuration)
+        private readonly IConfiguration _configuration;
+        private readonly IHttpContextAccessor _context;
+        public MovimientosController(IConfiguration configuration, EjecutarCmdWeb cmd, IHttpContextAccessor context)
         {
             _configuration = configuration;
-            _cmd = new EjecutarCmdWeb(configuration);
+            _cmd = cmd;
+            _context = context;
         }
 
         // Mostrar movimientos
         public IActionResult Index()
         {
             List<MovimientoViewModel> lista = new();
-            string connectionString = _configuration.GetConnectionString("DefaultConnection");
+            string connectionString = _context.HttpContext.Session.GetString("ConexionActiva")
+              ?? _configuration.GetConnectionString("DefaultConnection");
+            //Conexion a la base de datos
 
             using (SqlConnection con = new(connectionString))
             {

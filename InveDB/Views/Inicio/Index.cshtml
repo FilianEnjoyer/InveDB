@@ -1,76 +1,175 @@
-﻿@{
+﻿@model InveDB.Models.InicioViewModel
+
+@{
     ViewData["Title"] = "Inicio - InveDB";
-    Layout = "_Layout";
+    var rol = Context.Session.GetString("Rol");
+
+    if (rol == "Admin")
+    {
+        Layout = "~/Views/Shared/_LayoutAdmin.cshtml";
+    }
+    else if (rol == "Capturista")
+    {
+        Layout = "~/Views/Shared/_LayoutCapturista.cshtml";
+    }
+    else if (rol == "Encargado")
+    {
+        Layout = "~/Views/Shared/_LayoutEncargado.cshtml";
+    }
+    else
+    {
+        Layout = "~/Views/Shared/_Layout.cshtml";
+    }
 }
 
-<div class="content">
-    <h3>InveDB - Inicio</h3>
+<div class="container py-4">
+    <h3 class="mb-4">InveDB — Panel de inicio</h3>
 
-    <div class="row">
+    <!-- TARJETAS / BOTONES -->
+    <div class="row g-3">
         <div class="col-md-3">
-            <div class="card card-stats bg-success">
-                <h2>3</h2>
-                <p>Usuarios</p>
-            </div>
+            <a asp-controller="Usuarios" asp-action="Index" class="text-decoration-none">
+                <div class="card p-3 text-white shadow-sm card-verde h-100">
+                    <div class="d-flex align-items-center">
+                        <div>
+                            <h5 class="mb-0">Usuarios</h5>
+                            <small class="text-light">Gestionar usuarios</small>
+                        </div>
+                        <div class="ms-auto text-end">
+                            <span class="h4 mb-0">@Model.CountUsuarios</span>
+                        </div>
+                    </div>
+                </div>
+            </a>
         </div>
+
         <div class="col-md-3">
-            <div class="card card-stats bg-primary">
-                <h2>8</h2>
-                <p>Productos</p>
-            </div>
+            <a asp-controller="GestionarTablas" asp-action="Index" class="text-decoration-none">
+                <div class="card p-3 text-white shadow-sm card-azul h-100">
+                    <div class="d-flex align-items-center">
+                        <div>
+                            <h5 class="mb-0">Gestionar Tablas</h5>
+                            <small class="text-light">Productos, categorías, etc.</small>
+                        </div>
+                        <div class="ms-auto text-end">
+                            <span class="h4 mb-0">@Model.CountProductos</span>
+                        </div>
+                    </div>
+                </div>
+            </a>
         </div>
+
         <div class="col-md-3">
-            <div class="card card-stats bg-warning">
-                <h2>15</h2>
-                <p>Movimientos</p>
-            </div>
+            <a asp-controller="Inventario" asp-action="Index" class="text-decoration-none">
+                <div class="card p-3 text-white shadow-sm card-inventario h-100">
+                    <div class="d-flex align-items-center">
+                        <div>
+                            <h5 class="mb-0">Inventario</h5>
+                            <small class="text-light">Ver inventario</small>
+                        </div>
+                        <div class="ms-auto text-end">
+                            <span class="h4 mb-0">—</span>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <div class="col-md-3">
+            <a asp-controller="Movimientos" asp-action="Index" class="text-decoration-none">
+                <div class="card p-3 shadow-sm card-amarillo h-100">
+                    <div class="d-flex align-items-center">
+                        <div>
+                            <h5 class="mb-0 text-dark">Movimientos</h5>
+                            <small class="text-dark">Registrar entradas/salidas</small>
+                        </div>
+                        <div class="ms-auto text-end">
+                            <span class="h4 mb-0 text-dark">@Model.CountMovimientos</span>
+                        </div>
+                    </div>
+                </div>
+            </a>
         </div>
     </div>
 
-    <div class="row">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">Productos más usados</div>
-                <div class="card-body">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Producto</th>
-                                <th>Total usado</th>
-                                <th>Cantidad</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr><td>Pizza Pepperoni</td><td>300</td><td>10</td></tr>
-                            <tr><td>Pizza Hawaiana</td><td>240</td><td>8</td></tr>
-                            <tr><td>Pizza Vegetariana</td><td>150</td><td>5</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
+    <!-- espacio entre botones y tabla -->
+    <div class="my-4"></div>
 
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">Últimos movimientos</div>
-                <div class="card-body">
-                    <table>
-                        <thead>
+    <!-- ÚLTIMOS MOVIMIENTOS (tabla con el estilo que pediste) -->
+    <div class="card">
+        <div class="card-header">Últimos movimientos</div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width:60px;">ID</th>
+                            <th>Producto</th>
+                            <th style="width:180px;">Fecha</th>
+                            <th style="width:100px;">Cantidad</th>
+                            <th style="width:80px;">Tipo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.Ultimos != null && Model.Ultimos.Count > 0)
+                        {
+                            foreach (var m in Model.Ultimos)
+                            {
+                                <tr>
+                                    <td>@m.Id</td>
+                                    <td>@m.Producto</td>
+                                    <td>@m.Fecha.ToString("yyyy-MM-dd HH:mm")</td>
+                                    <td>@m.Cantidad</td>
+                                    <td>@(m.Tipo == "E" ? "Entrada" : m.Tipo == "S" ? "Salida" : m.Tipo)</td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
                             <tr>
-                                <th>#</th>
-                                <th>Producto</th>
-                                <th>Fecha</th>
-                                <th>Cantidad</th>
+                                <td colspan="5" class="text-center text-muted">No hay movimientos recientes</td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            <tr><td>1</td><td>Pizza Pepperoni</td><td>2025-10-01</td><td>3</td></tr>
-                            <tr><td>2</td><td>Pizza Hawaiana</td><td>2025-10-01</td><td>2</td></tr>
-                            <tr><td>3</td><td>Pizza Vegetariana</td><td>2025-09-30</td><td>1</td></tr>
-                        </tbody>
-                    </table>
-                </div>
+                        }
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 </div>
+
+<style>
+    .card-verde {
+        background-color: #28a745;
+    }
+
+    .card-azul {
+        background-color: #007bff;
+    }
+
+    .card-amarillo {
+        background-color: #ffc107;
+        color: #000;
+    }
+
+    .card-inventario {
+        background-color: #17a2b8;
+    }
+    /* teal */
+    a.text-decoration-none {
+        text-decoration: none;
+    }
+
+    .card {
+        border-radius: 8px;
+    }
+
+        .card:hover {
+            transform: translateY(-3px);
+            transition: 0.12s ease;
+            box-shadow: 0 8px 18px rgba(0,0,0,0.06);
+        }
+
+    .filter-section {
+        margin-bottom: 1rem;
+    }
+</style>

@@ -8,9 +8,9 @@ namespace InveDB.Datos
     {
         private readonly string _connectionString;
 
-        public EjecutarCmdWeb(IConfiguration configuration)
+        public EjecutarCmdWeb(string connectionString)
         {
-            _connectionString = configuration.GetConnectionString("DefaultConnection");
+            _connectionString = connectionString;
         }
 
         public int EjecutarNonQuery(string sql)

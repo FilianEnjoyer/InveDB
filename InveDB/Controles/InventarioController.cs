@@ -9,10 +9,12 @@ namespace InveDB.Controles
     public class InventarioController : Controller
     {
         private readonly IConfiguration _configuration;
+        private readonly IHttpContextAccessor _context;
 
-        public InventarioController(IConfiguration configuration)
+        public InventarioController(IConfiguration configuration, IHttpContextAccessor context)
         {
             _configuration = configuration;
+            _context = context;
         }
 
         public IActionResult Index(DateTime? fecha, string? proveedor, string? categoria, string? producto)
@@ -20,7 +22,10 @@ namespace InveDB.Controles
         {
 
             List<InventarioViewModel> lista = new();
-            string connectionString = _configuration.GetConnectionString("DefaultConnection");
+            string connectionString =
+              _context.HttpContext.Session.GetString("ConexionActiva")
+              ?? _configuration.GetConnectionString("DefaultConnection");
+
 
             using (SqlConnection con = new(connectionString))
             {

@@ -1,0 +1,302 @@
+﻿@model IEnumerable<InveDB.Models.Usuario>
+
+@{
+    ViewData["Title"] = "Gestión de Usuarios";
+
+    var rol = Context.Session.GetString("Rol");
+
+    if (rol == "Admin")
+        Layout = "~/Views/Shared/_LayoutAdmin.cshtml";
+    else if (rol == "Capturista")
+        Layout = "~/Views/Shared/_LayoutCapturista.cshtml";
+    else if (rol == "Encargado")
+        Layout = "~/Views/Shared/_LayoutEncargado.cshtml";
+    else
+        Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<!-- Mensajes -->
+@if (TempData["Mensaje"] != null)
+{
+    <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index:1100;">
+        <div class="toast align-items-center text-bg-success border-0 show">
+            <div class="d-flex">
+                <div class="toast-body">@TempData["Mensaje"]</div>
+                <button class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index:1100;">
+        <div class="toast align-items-center text-bg-danger border-0 show">
+            <div class="d-flex">
+                <div class="toast-body">@TempData["Error"]</div>
+                <button class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+    </div>
+}
+
+<h3 class="mb-4">Gestión de Usuarios</h3>
+
+<!-- FILTROS -->
+<div class="filter-section mb-4 row g-3 align-items-end">
+    <div class="col-md-3">
+        <label class="form-label fw-semibold">Usuario</label>
+        <input type="text" class="form-control" id="filtroUsuario" placeholder="Buscar usuario..." onkeyup="filtrarUsuarios()" />
+    </div>
+
+    <div class="col-md-2">
+        <label class="form-label fw-semibold">Rol</label>
+        <select class="form-select" id="filtroRol" onchange="filtrarUsuarios()">
+            <option value="">Todos</option>
+            <option value="Admin">Admin</option>
+            <option value="Encargado">Encargado</option>
+            <option value="Capturista">Capturista</option>
+        </select>
+    </div>
+
+    <div class="col-md-2">
+        <label class="form-label fw-semibold">Estado</label>
+        <select class="form-select" id="filtroEstado" onchange="filtrarUsuarios()">
+            <option value="">Todos</option>
+            <option value="Activo">Activo</option>
+            <option value="Inactivo">Inactivo</option>
+        </select>
+    </div>
+
+    <div class="col-md-2 d-flex align-items-end">
+        <button class="btn btn-outline-danger w-100" onclick="limpiarFiltros()">Limpiar</button>
+    </div>
+</div>
+
+<!-- TABLA -->
+<div class="table-responsive">
+    <table class="table table-bordered table-striped" id="tablaUsuarios">
+        <thead class="table-dark">
+            <tr>
+                <th>Usuario</th>
+                <th>Rol</th>
+                <th>Estado</th>
+                <th>Fecha Creación</th>
+                <th class="text-center">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Model.Any())
+            {
+                foreach (var u in Model)
+                {
+                    <tr>
+                        <td>@u.UsuarioNombre</td>
+                        <td>@u.Rol</td>
+                        <td>@(u.Activo ? "Activo" : "Inactivo")</td>
+                        <td>@u.FechaCreacion.ToString("yyyy-MM-dd")</td>
+                        <td class="text-center">
+                            <button type="button" class="btn btn-warning btn-sm" onclick="abrirEditar(@u.Id)">Editar</button>
+
+                            <a href="/Usuarios/Eliminar/@u.Id" class="btn btn-danger btn-sm" onclick="return confirm('¿Eliminar usuario?')">Eliminar</a>
+                        </td>
+                    </tr>
+                }
+            }
+            else
+            {
+                <tr>
+                    <td colspan="5" class="text-center text-muted">No hay usuarios registrados</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<hr />
+
+<!-- FORMULARIO CREAR -->
+<h5>Registrar nuevo usuario</h5>
+
+<form id="formUsuario" method="post" action="/Usuarios/Crear" class="row g-3">
+    @Html.AntiForgeryToken()
+
+    <input type="hidden" id="id" name="id" />
+
+    <div class="col-md-3">
+        <label>Usuario</label>
+        <input type="text" id="usuario" name="usuario" class="form-control" required />
+    </div>
+
+    <div class="col-md-3">
+        <label>Contraseña</label>
+        <input type="text" id="password" name="password" class="form-control" />
+    </div>
+
+    <div class="col-md-3">
+        <label>Rol</label>
+        <select id="rol" name="rol" class="form-select" required>
+            <option value="Admin">Admin</option>
+            <option value="Encargado">Encargado</option>
+            <option value="Capturista">Capturista</option>
+        </select>
+    </div>
+
+    <div class="col-md-2 d-flex align-items-end">
+        <button id="btnGuardar" class="btn btn-success w-100">Guardar</button>
+    </div>
+</form>
+
+
+<!-- MODAL EDITAR -->
+<div class="modal fade" id="modalEditar" tabindex="-1">
+    <div class="modal-dialog">
+        <form method="post" asp-action="Editar" asp-controller="Usuarios" class="modal-content">
+            @Html.AntiForgeryToken()
+
+            <div class="modal-header">
+                <h5 class="modal-title">Editar Usuario</h5>
+                <button class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+                <input type="hidden" name="id" id="editId" />
+
+                <div class="mb-3">
+                    <label>Usuario</label>
+                    <input type="text" name="usuario" id="editUsuario" class="form-control" required />
+                </div>
+
+                <div class="mb-3">
+                    <label>Contraseña (texto simple)</label>
+                    <input type="text" name="password" id="editPassword" class="form-control" />
+                </div>
+
+                <div class="mb-3">
+                    <label>Rol</label>
+                    <select name="rol" id="editRol" class="form-select" required>
+                        <option value="Admin">Admin</option>
+                        <option value="Encargado">Encargado</option>
+                        <option value="Capturista">Capturista</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label>Activo</label>
+                    <select name="activo" id="editActivo" class="form-select">
+                        <option value="true">Activo</option>
+                        <option value="false">Inactivo</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <button class="btn btn-primary">Guardar cambios</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- FILTROS JS -->
+<script>
+    function filtrarUsuarios() {
+        let u = document.getElementById("filtroUsuario").value.toLowerCase();
+        let r = document.getElementById("filtroRol").value.toLowerCase();
+        let e = document.getElementById("filtroEstado").value.toLowerCase();
+
+        let filas = document.querySelectorAll("#tablaUsuarios tbody tr");
+
+        filas.forEach(fila => {
+            let usuario = fila.cells[0].textContent.toLowerCase();
+            let rol = fila.cells[1].textContent.toLowerCase();
+            let estado = fila.cells[2].textContent.toLowerCase();
+
+            if (
+                usuario.includes(u) &&
+                (r === "" || rol.includes(r)) &&
+                (e === "" || estado.includes(e))
+            )
+                fila.style.display = "";
+            else
+                fila.style.display = "none";
+        });
+    }
+
+    function limpiarFiltros() {
+        document.getElementById("filtroUsuario").value = "";
+        document.getElementById("filtroRol").value = "";
+        document.getElementById("filtroEstado").value = "";
+        filtrarUsuarios();
+    }
+
+        function abrirEditar(id) {
+        fetch(`/Usuarios/Obtener/${id}`)
+            .then(r => {
+                if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                return r.json();
+            })
+            .then(resp => {
+                if (!resp || resp.success === false) {
+                    alert(resp?.message ?? "Usuario no encontrado.");
+                    return;
+                }
+
+                let u = resp.data || {};
+
+                // helper: intenta varias claves (camelCase / PascalCase / alternativas)
+                const get = (obj, ...keys) => {
+                    for (const k of keys) if (obj[k] !== undefined) return obj[k];
+                    return undefined;
+                };
+
+                const idVal      = get(u, 'id', 'Id');
+                const usuarioNom = get(u, 'usuarioNombre', 'UsuarioNombre', 'Usuario');
+                const passHash   = get(u, 'passwordHash', 'PasswordHash', 'password');
+                const rol        = get(u, 'rol', 'Rol');
+                const activo     = get(u, 'activo', 'Activo');
+
+                if (idVal === undefined) {
+                    alert('Respuesta inválida del servidor. Revisa la consola.');
+                    console.log('Respuesta completa:', resp);
+                    return;
+                }
+
+                document.getElementById("editId").value = idVal;
+                if (document.getElementById("editUsuario")) document.getElementById("editUsuario").value = usuarioNom ?? '';
+                if (document.getElementById("editPassword")) document.getElementById("editPassword").value = passHash ?? '';
+                if (document.getElementById("editRol")) document.getElementById("editRol").value = rol ?? '';
+                if (document.getElementById("editActivo")) {
+                    const actStr = (activo === true || activo === 'true' || activo === 1) ? 'true' : 'false';
+                    document.getElementById("editActivo").value = actStr;
+                }
+
+                const modalEl = document.getElementById("modalEditar");
+                if (!modalEl) return;
+
+                // Si bootstrap está cargado, usar el modal normal; si no, fallback visual
+                if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                    new bootstrap.Modal(modalEl).show();
+                } else {
+                    // fallback simple (no backdrop)
+                    modalEl.classList.add('show');
+                    modalEl.style.display = 'block';
+                    modalEl.setAttribute('aria-modal', 'true');
+                    modalEl.removeAttribute('aria-hidden');
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Error al obtener usuario. Abre la consola para más detalles.');
+            });
+    }
+</script>
+
+<style>
+    label {
+        font-weight: 600;
+    }
+
+    .table th, .table td {
+        vertical-align: middle;
+    }
+</style>

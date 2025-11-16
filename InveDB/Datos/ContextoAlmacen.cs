@@ -1,8 +1,9 @@
-﻿using Microsoft.EntityFrameworkCore;
-using InveDB.Modelos;
+﻿using InveDB.Modelos;
+using InveDB.Models;
+using Microsoft.EntityFrameworkCore;
 namespace InveDB.Datos
 {
-    public class ContextoAlmacen : DbContext
+    public class ContextoAlmacen : Microsoft.EntityFrameworkCore.DbContext
     {
         public ContextoAlmacen(DbContextOptions<ContextoAlmacen> options) : base(options) { }
 
@@ -12,5 +13,8 @@ namespace InveDB.Datos
         public DbSet<Sucursal> Sucursales { get; set; }
         public DbSet<Inventario> Inventarios { get; set; }
         public DbSet<Movimiento> Movimientos { get; set; }
+        public DbSet<Usuario> Usuarios { get; set; }
+
+
     }
 }

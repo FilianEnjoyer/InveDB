@@ -2,8 +2,27 @@
 
 @{
     ViewData["Title"] = "Gestión de Movimientos";
-    Layout = "_Layout";
+
+    var rol = Context.Session.GetString("Rol");
+
+    if (rol == "Admin")
+    {
+        Layout = "~/Views/Shared/_LayoutAdmin.cshtml";
+    }
+    else if (rol == "Capturista")
+    {
+        Layout = "~/Views/Shared/_LayoutCapturista.cshtml";
+    }
+    else if (rol == "Encargado")
+    {
+        Layout = "~/Views/Shared/_LayoutEncargado.cshtml";
+    }
+    else
+    {
+        Layout = "~/Views/Shared/_Layout.cshtml"; // por si existe el layout general
+    }
 }
+
 
 <!-- Mensajes de éxito o error -->
 @if (TempData["Mensaje"] != null)
@@ -77,8 +96,22 @@
     </div>
 
     <div class="col-md-3">
-        <label class="form-label fw-semibold">Fecha</label>
-        <input type="date" class="form-control mb-1" id="filtroFecha" onchange="filtrarMovimientos()" />
+        <label class="form-label fw-semibold">Rango de Fecha</label>
+
+        <div class="d-flex gap-2 mb-1">
+            <div class="input-group">
+                <input type="date" class="form-control" id="filtroFechaInicio" onchange="onFechaInicioChange()" />
+                <button type="button" class="btn btn-outline-secondary" title="Borrar fecha inicio" onclick="clearFechaInicio()">✕</button>
+            </div>
+
+            <div class="input-group">
+                <input type="date" class="form-control" id="filtroFechaFin" onchange="onFechaFinChange()" />
+                <button type="button" class="btn btn-outline-secondary" title="Borrar fecha fin" onclick="clearFechaFin()">✕</button>
+            </div>
+        </div>
+
+        <small class="text-muted d-block mb-1">Selecciona fecha inicio y fin (inclusive). Si seleccionas solo una, filtra desde/ hasta esa fecha.</small>
+
         <select class="form-select" id="dropdownFecha" onchange="filtrarPorDropdown('fecha')">
             <option value="">-- Seleccionar fecha --</option>
             @foreach (var f in ViewBag.Fechas)
@@ -89,6 +122,7 @@
             }
         </select>
     </div>
+
 
     <div class="col-md-1 d-flex justify-content-center">
         <button class="btn btn-outline-danger mt-2" onclick="limpiarFiltros()">Limpiar</button>
@@ -229,7 +263,8 @@
     function filtrarMovimientos() {
         let prod = document.getElementById("filtroProducto").value.toLowerCase();
         let tipo = document.getElementById("filtroTipo").value.toLowerCase();
-        let fecha = document.getElementById("filtroFecha").value;
+        let fechaInicio = document.getElementById("filtroFechaInicio").value; // yyyy-MM-dd or ""
+        let fechaFin = document.getElementById("filtroFechaFin").value;
         let prov = document.getElementById("filtroProveedor").value.toLowerCase();
         let suc = document.getElementById("filtroSucursal").value.toLowerCase();
 
@@ -240,19 +275,107 @@
             let t = fila.cells[1].textContent.toLowerCase();
             let pr = fila.cells[3].textContent.toLowerCase();
             let s = fila.cells[4].textContent.toLowerCase();
-            let f = fila.cells[5].textContent.trim();
+            let f = fila.cells[5].textContent.trim(); // formato yyyy-MM-dd
+
+            // validar fecha con reglas de rango (inclusivo)
+            let fechaOK = true;
+            if (fechaInicio && fechaFin) {
+                fechaOK = (f >= fechaInicio && f <= fechaFin);
+            } else if (fechaInicio) {
+                fechaOK = (f >= fechaInicio);
+            } else if (fechaFin) {
+                fechaOK = (f <= fechaFin);
+            } else {
+                fechaOK = true;
+            }
 
             if (
                 p.includes(prod) &&
                 (tipo === "" || t.includes(tipo)) &&
-                (fecha === "" || f === fecha) &&
+                fechaOK &&
                 (prov === "" || pr.includes(prov)) &&
                 (suc === "" || s.includes(suc))
-            )
+            ) {
                 fila.style.display = "";
-            else
+            } else {
                 fila.style.display = "none";
+            }
         });
+    }
+    function onFechaInicioChange() {
+        const inicioInput = document.getElementById("filtroFechaInicio");
+        const finInput = document.getElementById("filtroFechaFin");
+        const inicio = inicioInput.value;
+        const fin = finInput.value;
+
+        if (inicio) {
+            // establecer min del fin
+            finInput.min = inicio;
+
+            // si hay fin y es anterior a inicio, corregir fin para que sea igual a inicio
+            if (fin && fin < inicio) {
+                finInput.value = inicio;
+            }
+        } else {
+            // quitar restricción
+            finInput.removeAttribute('min');
+        }
+
+        // si inicio fue limpiado, no dejamos max en inicio
+        if (!inicio) {
+            inicioInput.removeAttribute('max');
+        }
+
+        filtrarMovimientos();
+    }
+    function onFechaFinChange() {
+        const inicioInput = document.getElementById("filtroFechaInicio");
+        const finInput = document.getElementById("filtroFechaFin");
+        const inicio = inicioInput.value;
+        const fin = finInput.value;
+
+        if (fin) {
+            // establecer max del inicio
+            inicioInput.max = fin;
+
+            // si hay inicio y es posterior al fin, corregir inicio para que sea igual a fin
+            if (inicio && inicio > fin) {
+                inicioInput.value = fin;
+            }
+        } else {
+            // quitar restricción
+            inicioInput.removeAttribute('max');
+        }
+
+        // si fin fue limpiado, no dejamos min en fin
+        if (!fin) {
+            finInput.removeAttribute('min');
+        }
+
+        filtrarMovimientos();
+    }
+    function clearFechaInicio() {
+        const inicioInput = document.getElementById("filtroFechaInicio");
+        inicioInput.value = "";
+        // quitar max que pudo tener
+        inicioInput.removeAttribute('max');
+
+        // si existe fin, no forzarlo; quitar min en fin si ya no aplica
+        const finInput = document.getElementById("filtroFechaFin");
+        if (!finInput.value) finInput.removeAttribute('min');
+
+        filtrarMovimientos();
+    }
+
+    function clearFechaFin() {
+        const finInput = document.getElementById("filtroFechaFin");
+        finInput.value = "";
+        finInput.removeAttribute('min');
+
+        const inicioInput = document.getElementById("filtroFechaInicio");
+        if (!inicioInput.value) inicioInput.removeAttribute('max');
+
+        filtrarMovimientos();
     }
 
     function filtrarPorDropdown(tipo) {
@@ -263,8 +386,13 @@
                 document.getElementById("filtroProducto").value = valor;
                 break;
             case "fecha":
-                valor = document.getElementById("dropdownFecha").value;
-                document.getElementById("filtroFecha").value = valor;
+                valor = document.getElementById("dropdownFecha").value; // yyyy-MM-dd
+                document.getElementById("filtroFechaInicio").value = valor;
+                document.getElementById("filtroFechaFin").value = valor;
+
+                // ajustar min/max
+                document.getElementById("filtroFechaFin").min = valor;
+                document.getElementById("filtroFechaInicio").max = valor;
                 break;
         }
         filtrarMovimientos();
@@ -273,11 +401,19 @@
     function limpiarFiltros() {
         document.getElementById("filtroProducto").value = "";
         document.getElementById("filtroTipo").value = "";
-        document.getElementById("filtroFecha").value = "";
+        document.getElementById("filtroFechaInicio").value = "";
+        document.getElementById("filtroFechaFin").value = "";
         document.getElementById("dropdownProducto").value = "";
         document.getElementById("dropdownFecha").value = "";
         document.getElementById("filtroProveedor").value = "";
         document.getElementById("filtroSucursal").value = "";
+
+        // quitar restricciones min/max
+        const inicio = document.getElementById("filtroFechaInicio");
+        const fin = document.getElementById("filtroFechaFin");
+        if (inicio) { inicio.removeAttribute('max'); }
+        if (fin) { fin.removeAttribute('min'); }
+
         filtrarMovimientos();
     }
 
@@ -334,7 +470,7 @@
     }
 
     // Validación extra antes de enviar
-    document.getElementById("formMovimiento").addEventListener("submit", function (e) {
+     document.getElementById("formMovimiento").addEventListener("submit", function (e) {
         const tipo = document.getElementById("tipoMovimiento").value;
         const proveedor = document.getElementById("idProveedor").value;
         const sucursal = document.getElementById("idSucursal").value;
@@ -343,5 +479,10 @@
             e.preventDefault();
             alert("Por favor, selecciona un proveedor o sucursal válido antes de insertar.");
         }
+    });
+
+    // Llamada inicial para aplicar cualquier filtro por defecto al cargar
+    document.addEventListener('DOMContentLoaded', function () {
+        filtrarMovimientos();
     });
 </script>
