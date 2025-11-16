@@ -63,7 +63,7 @@ namespace InveDB.Controles
         }
 
         // ------------------------------------------------------
-        // LOGOUT
+        // LOGOUT s
         // ------------------------------------------------------
         public IActionResult Logout()
         {
