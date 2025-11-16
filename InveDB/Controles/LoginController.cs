@@ -112,7 +112,7 @@ namespace InveDB.Controles
         }
 
         // ------------------------------------------------------
-        // SOPORTE PARA TUS CONEXIONES PERSONALIZADAS
+        // SOPORTE PARA CONEXIONES PREDETERMINADAS
         // ------------------------------------------------------
         private string GetConnectionByUser(string usuario, string pass)
         {
