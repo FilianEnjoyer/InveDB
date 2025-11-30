@@ -1,7 +1,12 @@
 ﻿@{
     Layout = null;
 }
-
+@if (Context.Request.Query["inactive"] == "1")
+{
+    <div class="alert alert-warning">
+        Tu cuenta sesion fue cerrada debido a un error inesperado. Si pasa frecuentemente contacta a soporte.
+    </div>
+}
 <!DOCTYPE html>
 <html>
 <head>

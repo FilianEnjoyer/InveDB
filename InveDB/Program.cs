@@ -1,4 +1,5 @@
 ﻿using InveDB.Datos;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -71,8 +72,50 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
-// 🚨 La sesión SIEMPRE debe ir antes de Authorization
+//  La sesión SIEMPRE debe ir antes de Authorization
 app.UseSession();
+
+app.Use(async (context, next) =>
+{
+    var path = context.Request.Path.Value?.ToLower() ?? "";
+
+    // --- PERMITIR ACCESO A LOGIN, LOGOUT, Y ESTÁTICOS ---
+    if (path.StartsWith("/login") ||
+        path.StartsWith("/cuenta") ||
+        path.StartsWith("/logout") ||
+        path.StartsWith("/css") ||
+        path.StartsWith("/js") ||
+        path.StartsWith("/lib") ||
+        path.StartsWith("/images"))
+    {
+        await next();
+        return;
+    }
+    // ----------------------------------------------------
+
+    var config = context.RequestServices.GetRequiredService<IConfiguration>();
+    var defaultConn = config.GetConnectionString("DefaultConnection");
+
+    var sesionConexion = context.Session.GetString("ConexionActiva");
+
+    // Sin sesión = usando DefaultConnection → bloquear
+    if (string.IsNullOrEmpty(sesionConexion))
+    {
+        context.Session.Clear();
+        context.Response.Redirect("/Login?default=1");
+        return;
+    }
+
+    // Si está usando DefaultConnection → bloquear
+    if (sesionConexion == defaultConn)
+    {
+        context.Session.Clear();
+        context.Response.Redirect("/Login?default=1");
+        return;
+    }
+
+    await next();
+});
 
 app.UseAuthorization();
 
